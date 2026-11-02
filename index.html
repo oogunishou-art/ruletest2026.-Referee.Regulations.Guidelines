@@ -2318,6 +2318,7 @@ function CH_submitMultiple(){
   document.getElementById('r-card').innerHTML=resHTML;
   // ↓ 直前問題として記録（「前の問題を確認」用）
   PREV_record('main',c,_multiChoice,ok,resHTML);
+  try{ STUDYLOG_record(1); }catch(e){}
   BADGES_check();
 }
 function _buildMultipleResultHTML(c,ok){
@@ -2454,6 +2455,7 @@ function CH_submitCases(){
   document.getElementById('r-card').innerHTML=resHTML;
   // ↓ 直前問題として記録（「前の問題を確認」用）
   PREV_record('main',c,results,ok,resHTML);
+  try{ STUDYLOG_record(1); }catch(e){}
   BADGES_check();
 }
 function _buildCaseResultHTML(c,ok,results){
@@ -2822,6 +2824,7 @@ function DC_choose(ua){
   document.getElementById('dc-rcard').innerHTML=resHtml;
   // ↓ 直前問題として記録（「前の問題を確認」用）
   PREV_record('daily',c,ua,ok,resHtml);
+  try{ STUDYLOG_record(1); }catch(e){}
   document.getElementById('dc-btns').style.display='none';document.getElementById('dc-res').style.display='block';
 }
 function DC_next(){
@@ -3086,7 +3089,74 @@ function RRT(){
 function TRD(id){var el=document.getElementById(id);if(el)el.classList.toggle('open');}
 
 // ====== 記録タブ（タップで出題機能付き）======
-function RRC(){ANA_sub('radar');}
+function RRC(){
+  RRC_updateSummary();   // ★ サマリーを先に更新
+  ANA_sub('radar');
+}
+
+// ★ サマリー行の集計（本編 + インプリ + 条文暗記 全データ）
+function RRC_updateSummary(){
+  var tc=0,tw=0;
+  var tcMain=0,twMain=0;
+  var tcImpl=0,twImpl=0;
+  var tcMem=0,twMem=0;
+  // ① rec の全エントリ（本編 + インプリ）
+  for(var k in rec){
+    if(!rec.hasOwnProperty(k))continue;
+    var d=rec[k];
+    if(!d||typeof d.c==='undefined')continue;
+    tc+=d.c;tw+=d.w;
+    if(typeof k==='string' && k.indexOf('rq_impl_')===0){
+      tcImpl+=d.c;twImpl+=d.w;
+    } else {
+      tcMain+=d.c;twMain+=d.w;
+    }
+  }
+  // ② memRec の全エントリ（条文暗記モード - 全レベル合算）
+  if(typeof memRec!=='undefined' && memRec){
+    for(var segId in memRec){
+      if(!memRec.hasOwnProperty(segId))continue;
+      var segData=memRec[segId];
+      if(!segData||!segData.byLevel)continue;
+      for(var lv in segData.byLevel){
+        if(!segData.byLevel.hasOwnProperty(lv))continue;
+        var ld=segData.byLevel[lv];
+        if(!ld)continue;
+        tc+=(ld.c||0);tw+=(ld.w||0);
+        tcMem+=(ld.c||0);twMem+=(ld.w||0);
+      }
+    }
+  }
+  var tot=tc+tw;
+  var rate=tot>0?Math.round(tc/tot*100):0;
+  var elT=document.getElementById('rc-t'); if(elT)elT.textContent=tot;
+  var elOk=document.getElementById('rc-ok'); if(elOk)elOk.textContent=tc;
+  var elR=document.getElementById('rc-r'); if(elR)elR.textContent=rate+'%';
+  // 内訳も表示（本編/インプリ/暗記）
+  var breakdownId='rc-breakdown';
+  var brEl=document.getElementById(breakdownId);
+  if(!brEl){
+    // 内訳表示エリアを追加
+    var sumRow=document.querySelector('#T-record .ls3');
+    if(sumRow){
+      var br=document.createElement('div');
+      br.id=breakdownId;
+      br.style.cssText='margin:4px 0 10px 0;padding:8px 10px;background:linear-gradient(135deg,#f0fdfa,#ecfeff);border-radius:8px;border:1px solid #a5f3fc;display:grid;grid-template-columns:repeat(3,1fr);gap:4px;font-size:10px';
+      sumRow.parentNode.insertBefore(br, sumRow.nextSibling);
+      brEl=br;
+    }
+  }
+  if(brEl){
+    var mainTot=tcMain+twMain, implTot=tcImpl+twImpl, memTot=tcMem+twMem;
+    var mainR=mainTot>0?Math.round(tcMain/mainTot*100):0;
+    var implR=implTot>0?Math.round(tcImpl/implTot*100):0;
+    var memR=memTot>0?Math.round(tcMem/memTot*100):0;
+    brEl.innerHTML=
+      '<div style="text-align:center"><div style="color:#64748b;font-weight:600">本編クイズ</div><div style="color:#164e63;font-weight:800;font-size:12px">'+mainTot+'回 / '+mainR+'%</div></div>'+
+      '<div style="text-align:center;border-left:1px solid #a5f3fc;border-right:1px solid #a5f3fc"><div style="color:#64748b;font-weight:600">インプリ本文</div><div style="color:#164e63;font-weight:800;font-size:12px">'+implTot+'回 / '+implR+'%</div></div>'+
+      '<div style="text-align:center"><div style="color:#64748b;font-weight:600">条文暗記</div><div style="color:#164e63;font-weight:800;font-size:12px">'+memTot+'回 / '+memR+'%</div></div>';
+  }
+}
 // ====== セッション・目標ストレージ ======
 function LSess(){try{return JSON.parse(localStorage.getItem(SK_SESS)||'[]');}catch(e){return [];}}
 function SSess(){try{localStorage.setItem(SK_SESS,JSON.stringify(sessions.slice(-100)));}catch(e){}}
@@ -3604,11 +3674,8 @@ function ANA_setGoal(){
 // 全問題リスト（従来のRRC）
 function RRC_list(){
   var w=document.getElementById('rc-wrap');if(!w)return;
-  var tc=0,tw=0;for(var k in rec){tc+=rec[k].c;tw+=rec[k].w;}
-  var tot=tc+tw,rate=tot>0?Math.round(tc/tot*100):0;
-  document.getElementById('rc-t').textContent=tot;
-  document.getElementById('rc-ok').textContent=tc;
-  document.getElementById('rc-r').textContent=rate+'%';
+  // ★ サマリーは全データで更新（インプリ・暗記含む）
+  RRC_updateSummary();
   w.innerHTML=ALL.map(function(c){
     var d=rec[c.id]||{c:0,w:0};var t=d.c+d.w;
     var isN=t===0;var rate=isN?-1:Math.round(d.c/t*100);var isW=!isN&&rate<50;
@@ -4307,19 +4374,39 @@ function TOP_updateStats(){
       if(tt>0){implDone++;implOk+=dd.c;implAns+=tt;}
     }
   });
+  // 条文暗記モード（マスターデータに合算）
+  var memDone=0,memOk=0,memAns=0;
+  if(typeof memRec!=='undefined' && memRec){
+    Object.keys(memRec).forEach(function(segId){
+      var segData=memRec[segId];
+      if(!segData||!segData.byLevel)return;
+      var segHasData=false;
+      Object.keys(segData.byLevel).forEach(function(lv){
+        var ld=segData.byLevel[lv];
+        if(!ld)return;
+        var tt=(ld.c||0)+(ld.w||0);
+        if(tt>0){memOk+=(ld.c||0);memAns+=tt;segHasData=true;}
+      });
+      if(segHasData)memDone++;
+    });
+  }
   // マスター合算（ホーム表示用）
-  var totalDone=mainDone+implDone;
-  var totalOk=mainOk+implOk;
-  var totalAns=mainAns+implAns;
+  var totalDone=mainDone+implDone+memDone;
+  var totalOk=mainOk+implOk+memOk;
+  var totalAns=mainAns+implAns+memAns;
   var el=document.getElementById('th-done');if(el)el.textContent=totalDone;
   var el2=document.getElementById('th-rate');if(el2)el2.textContent=totalAns>0?Math.round(totalOk/totalAns*100)+'%':'0%';
-  // 本編／インプリの内訳を小さく表示（マスターの下）
+  // 本編／インプリ／暗記の内訳を小さく表示
   var brk=document.getElementById('th-breakdown');
   if(brk){
     var parts=[];
     parts.push('<span>📚 本編 '+mainDone+'/'+ALL.length+' 問</span>');
     if(implAns>0 || RULEQUIZ_count()>0){
       parts.push('<span>📖 インプリ '+implDone+'/'+RULEQUIZ_count()+' 問</span>');
+    }
+    if(memAns>0){
+      var memTotal=(typeof MEM_build==='function')?MEM_build().length:0;
+      parts.push('<span>🧠 暗記 '+memDone+'/'+memTotal+' 条</span>');
     }
     brk.innerHTML=parts.join('<span style="color:#64748b">／</span>');
   }
@@ -5477,6 +5564,8 @@ function MEM_rate(rating){
   memRec[seg.id].lastLevel=memLevel;
   memRec[seg.id].ts=Date.now();
   SMemRec();
+  // ★ 学習時間ログに記録
+  try{ STUDYLOG_record(1); }catch(e){}
   // 履歴に記録（前へ戻る用）
   _histMem[memIdx]={rating:rating, level:memLevel, ts:Date.now()};
   // UI更新

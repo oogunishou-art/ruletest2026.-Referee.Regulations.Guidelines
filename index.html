@@ -257,6 +257,15 @@ button,.cbtn,.tnb,.mode-tab,.fbtn,.rfb,.rswb,.jump-btn,.next-btn,.app-header-btn
 .mem-diff-match{background:#dcfce7;color:#15803d;padding:0 1px;border-radius:2px}
 .mem-diff-missing{background:#fee2e2;color:#991b1b;padding:0 1px;border-radius:2px;text-decoration:underline wavy #dc2626;text-underline-offset:3px}
 .mem-diff-extra{background:#fee2e2;color:#991b1b;padding:0 1px;border-radius:2px;text-decoration:line-through #dc2626}
+/* 共通モーダル（問題一覧用） */
+.prev-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:flex-start;justify-content:center;overflow-y:auto;padding:16px 8px;animation:prevfadein .18s}
+.prev-modal.show{display:flex}
+@keyframes prevfadein{from{opacity:0}to{opacity:1}}
+.prev-modal-box{background:#f8fafc;border-radius:14px;max-width:720px;width:100%;max-height:92vh;box-shadow:0 20px 60px rgba(0,0,0,.4);overflow:hidden}
+.rqlist-modal-head{padding:12px 14px;background:#fff;border-bottom:1.5px solid #e4e7ec;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;position:sticky;top:0;z-index:5}
+.rqlist-close{padding:5px 10px;border-radius:6px;border:1.5px solid #d0d5dd;background:#fff;color:#475467;font-size:11px;font-weight:700;cursor:pointer}
+.rqlist-close:hover{background:#f2f4f7}
+.rqlist-modal-body{padding:14px;overflow-y:auto;flex:1;max-height:calc(92vh - 60px)}
 .mem-rate-btn{padding:14px 8px;border:none;border-radius:12px;cursor:pointer;color:#fff;font-size:13px;font-weight:800;transition:transform .1s;box-shadow:0 2px 6px rgba(0,0,0,.1)}
 .mem-rate-btn:active{transform:scale(.96)}
 .mem-rate-master{background:linear-gradient(135deg,#059669,#047857)}
@@ -1666,6 +1675,7 @@ var SK='jba_v3', SKR='jba_rule_v1', SKD='jba_daily_v1', SKDP='jba_daily_progress
 // B級受審対策用の新規キー
 var SK_EXAM='jba_exam_v1', SK_STUDYLOG='jba_studylog_v1', SK_TIMING='jba_timing_v1', SK_MOCK='jba_mock_v1', SK_BADGES='jba_badges_v1', SK_JUMP='jba_jumpstack_v1';
 var SK_MEMREC='jba_mem_rec_v1', SK_MEMPROG='jba_mem_prog_v1';
+var SK_RQPROG='jba_rq_prog_v1';   // インプリ本文テスト専用進捗
 
 // ====== 状態 ======
 var mode='order',queue=[],qi=0,ses={ok:0,ng:0},chosen=null,miniHistory=[],sessions=[],studyGoal=null;
@@ -2661,7 +2671,13 @@ function CH(ua){
 }
 function NQ(){
   qi++;
-  if(mode!=='wrong')SQP(); // qi++後に保存 → 次の問題から再開（mini含む）
+  if(mode==='rulequiz'){
+    // ★ インプリ本文テスト専用保存
+    try{ SRQProg(_rqCurrentFilter); }catch(e){}
+    if(qi>=queue.length){try{ ClearRQProg(); }catch(e){}}
+  } else if(mode!=='wrong'){
+    SQP(); // qi++後に保存 → 次の問題から再開（mini含む）
+  }
   RQ();
   // ★ 戻った後に進んだ問題が履歴にある場合は回答済み状態を復元
   setTimeout(function(){
@@ -4808,6 +4824,10 @@ function MEM_makeCloze(fullText, level){
   // レベル1は最大3個、レベル2は最大8個、レベル3は制限なし
   if(level===1 && mask.length>3) mask=mask.slice(0,3);
   else if(level===2 && mask.length>8) mask=mask.slice(0,8);
+  // ★ 空欄が0個の場合は○×正誤問題にフォールバック
+  if(mask.length===0 && (level===1||level===2||level===3)){
+    return {text:'', blanks:[], mode:'tfquestion', body:body};
+  }
   // 空欄テキストを構築
   var parts=[];var prev=0;
   mask.forEach(function(mk,idx){
@@ -4818,6 +4838,77 @@ function MEM_makeCloze(fullText, level){
   });
   parts.push(body.substring(prev));
   return {text:parts.join(''), blanks:blanks, mode:'cloze', body:body};
+}
+
+// ========== 本文正誤問題（○×）の自動生成 ==========
+// bodyから改ざんパターンを作る。50%で原文のまま、50%で用語入れ替え/数字変更
+var _memCurrentTF=null;  // 直前のT/F情報
+function _memMakeTF(body){
+  var shouldModify=Math.random()<0.5;
+  if(!shouldModify){
+    return {displayedText:body, isOriginal:true, modifications:[]};
+  }
+  // 1) 数字 + 単位 を置換
+  var numMatches=[];
+  var re1=/(\d+)(秒|分|個|人|回|点|本)/g;
+  var mA;
+  while((mA=re1.exec(body))!==null){
+    numMatches.push({start:mA.index, end:mA.index+mA[0].length, orig:mA[0], num:parseInt(mA[1]), unit:mA[2]});
+  }
+  if(numMatches.length>0){
+    var pick=numMatches[Math.floor(Math.random()*numMatches.length)];
+    var newNum;
+    // バスケ特有の数字セット
+    var common={'秒':[3,5,8,14,24],'分':[1,2,5,10],'個':[1,2,3,4,5,6],'人':[1,2,3,4,5],'回':[1,2,3],'点':[1,2,3],'本':[1,2,3]};
+    var pool=common[pick.unit]||[1,2,3,5,10];
+    pool=pool.filter(function(n){return n!==pick.num;});
+    newNum=pool[Math.floor(Math.random()*pool.length)];
+    if(!newNum)newNum=pick.num+1;
+    var newWord=newNum+pick.unit;
+    var modified=body.substring(0,pick.start)+newWord+body.substring(pick.end);
+    return {displayedText:modified, isOriginal:false, modifications:[{orig:pick.orig, mod:newWord, start:pick.start, end:pick.start+newWord.length}]};
+  }
+  // 2) 用語入れ替え
+  var swaps=[
+    ['アンスポーツマンライクファウル','テクニカルファウル'],
+    ['テクニカルファウル','アンスポーツマンライクファウル'],
+    ['ディスクォリファイングファウル','テクニカルファウル'],
+    ['パーソナルファウル','テクニカルファウル'],
+    ['バックコート','フロントコート'],
+    ['フロントコート','バックコート'],
+    ['オフェンス','ディフェンス'],
+    ['ディフェンス','オフェンス'],
+    ['成功','失敗'],
+    ['失敗','成功'],
+    ['与えられる','与えられない'],
+    ['与えられない','与えられる'],
+    ['許される','許されない'],
+    ['許されない','許される'],
+    ['認められる','認められない'],
+    ['認められない','認められる'],
+    ['できる','できない'],
+    ['ならない','なる'],
+    ['始める','終える'],
+    ['始まる','終わる'],
+    ['オフェンス','ディフェンス'],
+    ['最初','最後'],
+    ['増やす','減らす'],
+    ['増加する','減少する'],
+    ['バスケットに入った','バスケットに入らなかった'],
+    ['バスケットに入らなかった','バスケットに入った']
+  ];
+  var candidates=[];
+  swaps.forEach(function(pair){
+    var idx=body.indexOf(pair[0]);
+    if(idx>=0)candidates.push({orig:pair[0], mod:pair[1], idx:idx});
+  });
+  if(candidates.length>0){
+    var pick2=candidates[Math.floor(Math.random()*candidates.length)];
+    var modified2=body.substring(0,pick2.idx)+pick2.mod+body.substring(pick2.idx+pick2.orig.length);
+    return {displayedText:modified2, isOriginal:false, modifications:[{orig:pick2.orig, mod:pick2.mod, start:pick2.idx, end:pick2.idx+pick2.mod.length}]};
+  }
+  // 改ざん不可 → 原文のまま
+  return {displayedText:body, isOriginal:true, modifications:[]};
 }
 
 function _memEsc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -5019,23 +5110,124 @@ function MEM_render(){
 function _memRenderCloze(seg){
   var cz=MEM_makeCloze(seg.fullText, memLevel);
   var h='<div class="mem-cloze">';
-  h+='<div class="mem-cloze-lbl">以下の空欄を思い出して、答え合わせしてください：</div>';
-  if(cz.mode==='textinput'){
+  if(cz.mode==='tfquestion'){
+    // ★ 空欄生成不可→○×正誤問題
+    var tf=_memMakeTF(cz.body);
+    _memCurrentTF=tf;
+    h+='<div class="mem-cloze-lbl" style="color:#7c2d12;background:#fef3c7;padding:6px 10px;border-radius:6px">⚖️ 以下の条文は原文として正しいですか？</div>';
+    h+='<div class="mem-cloze-text" style="margin-top:10px;padding:12px;background:#fff;border:1.5px solid #cbd5e1;border-radius:10px;font-size:14px;line-height:1.9">'+_memEsc(tf.displayedText).replace(/\n/g,'<br>')+'</div>';
+    h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px" id="mem-tf-btns">';
+    h+='<button class="cbtn cbtn-o" onclick="MEM_answerTF(true)" style="padding:14px;font-size:16px">○<span class="cbtn-lbl">正しい</span></button>';
+    h+='<button class="cbtn cbtn-x" onclick="MEM_answerTF(false)" style="padding:14px;font-size:16px">×<span class="cbtn-lbl">誤り</span></button>';
+    h+='</div>';
+    h+='<div style="margin-top:8px;font-size:11px;color:#64748b;text-align:center">💡 この条文は特定の数字・用語がない短い条文のため、本文の正誤を問います</div>';
+  } else if(cz.mode==='textinput'){
     // Lv.4: 要点だけ残して書き起こし
     var hint=seg.fullText.substring(0,20)+'...';
+    h+='<div class="mem-cloze-lbl">以下の冒頭ヒントから、思い出して書き起こしてください：</div>';
     h+='<div class="mem-hint">💡 冒頭ヒント：「'+_memEsc(hint)+'」</div>';
     h+='<textarea id="mem-input" class="mem-input" placeholder="覚えている範囲で条文を書き起こしてください..." rows="6"></textarea>';
     h+='<div style="margin-top:8px;text-align:center"><button class="next-btn" onclick="MEM_checkInput()" style="max-width:200px">答え合わせ</button></div>';
   } else if(cz.mode==='textinput_full'){
     // Lv.5: 完全白紙
+    h+='<div class="mem-cloze-lbl">条番号だけから、全文を暗唱してください：</div>';
     h+='<div class="mem-hint">💡 条番号のみ：<strong>'+_memEsc(seg.ruleSrc)+'</strong></div>';
     h+='<textarea id="mem-input" class="mem-input" placeholder="条文を一字一句書き起こしてください..." rows="8"></textarea>';
     h+='<div style="margin-top:8px;text-align:center"><button class="next-btn" onclick="MEM_checkInput()" style="max-width:200px">答え合わせ</button></div>';
   } else {
+    h+='<div class="mem-cloze-lbl">以下の空欄を思い出して、答え合わせしてください：</div>';
     h+='<div class="mem-cloze-text">'+cz.text.replace(/\n/g,'<br>')+'</div>';
   }
   h+='</div>';
   return h;
+}
+
+// ○×正誤問題の回答
+function MEM_answerTF(userAns){
+  if(!_memCurrentTF)return;
+  var tf=_memCurrentTF;
+  var ok=(userAns===tf.isOriginal);
+  // ボタンを無効化
+  var btns=document.getElementById('mem-tf-btns');
+  if(btns){
+    var allBtns=btns.querySelectorAll('button');
+    for(var i=0;i<allBtns.length;i++){allBtns[i].disabled=true;}
+    // 正解・不正解の視覚フィードバック
+    var btnO=btns.querySelectorAll('button')[0];
+    var btnX=btns.querySelectorAll('button')[1];
+    var correctAns=tf.isOriginal;
+    if(userAns===true){
+      btnO.className='cbtn '+(ok?'cbtn-ok':'cbtn-ng');
+      if(!ok)btnX.className='cbtn cbtn-rv';
+    } else {
+      btnX.className='cbtn '+(ok?'cbtn-ok':'cbtn-ng');
+      if(!ok)btnO.className='cbtn cbtn-rv';
+    }
+  }
+  // 答えを表示
+  var el=document.getElementById('mem-answer');
+  if(el){
+    var h='<div class="mem-full-answer">';
+    h+='<div class="mem-full-lbl">'+(ok?'✅ 正解！':'❌ 不正解')+' — '+(tf.isOriginal?'この条文は<strong>原文のまま</strong>でした':'この条文は<strong>改変されていました</strong>')+'</div>';
+    // 原文（正解）表示
+    h+='<div style="margin-top:10px;padding:10px;background:#f0fdfa;border-radius:8px;border-left:3px solid #0b7285">';
+    h+='<div style="font-size:11px;color:#0b7285;font-weight:800;margin-bottom:6px">📖 原文（正解）</div>';
+    h+='<div class="mem-full-text" style="font-size:14px">';
+    if(tf.isOriginal){
+      h+=_memEsc(tf.displayedText).replace(/\n/g,'<br>');
+    } else {
+      // 元の原文を表示（body）
+      var seg=memQueue[memIdx];
+      var origBody=seg.fullText;
+      var nl=origBody.indexOf('\n');
+      if(nl>0 && nl<30)origBody=origBody.substring(nl+1);
+      // 変更箇所を元に戻した原文を表示＋改変部分をハイライト
+      // tf.displayedTextは改変済み、オリジナルの対応箇所を特定
+      h+=_memHighlightOrig(origBody, tf);
+    }
+    h+='</div></div>';
+    // 改変があった場合、改変箇所を表示
+    if(!tf.isOriginal && tf.modifications.length>0){
+      h+='<div style="margin-top:10px;padding:10px;background:#fef2f2;border-radius:8px;border-left:3px solid #dc2626">';
+      h+='<div style="font-size:11px;color:#991b1b;font-weight:800;margin-bottom:6px">❌ 改変されていた箇所</div>';
+      tf.modifications.forEach(function(m){
+        h+='<div style="font-size:13px;margin:4px 0"><span style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:4px;text-decoration:line-through">'+_memEsc(m.mod)+'</span> → <span style="background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:4px;font-weight:700">'+_memEsc(m.orig)+'</span></div>';
+      });
+      h+='</div>';
+    }
+    h+='</div>';
+    el.innerHTML=h;
+    el.style.display='block';
+  }
+  // 自己採点を表示
+  var r=document.getElementById('mem-rate'); if(r)r.style.display='block';
+  // 「答えを見る」ボタンを隠す
+  var showBtn=document.getElementById('mem-show-ans'); if(showBtn)showBtn.style.display='none';
+}
+
+// 原文を表示し、改変箇所を正解としてハイライト
+function _memHighlightOrig(origBody, tf){
+  // 改変箇所を緑でハイライト
+  // tf.modifications の start/end は displayedText の位置なので、origBodyでは位置が異なる
+  // 単純アプローチ：改変の orig（元の文字列）を origBody で探してハイライト
+  var result=origBody;
+  var highlights=[];
+  tf.modifications.forEach(function(m){
+    var idx=result.indexOf(m.orig);
+    if(idx>=0){
+      highlights.push({start:idx, end:idx+m.orig.length, text:m.orig});
+    }
+  });
+  highlights.sort(function(a,b){return a.start-b.start;});
+  var parts=[];
+  var prev=0;
+  highlights.forEach(function(hl){
+    parts.push(_memEsc(result.substring(prev, hl.start)));
+    parts.push('<span class="mem-highlight" style="background:#dcfce7;color:#15803d;border-color:#059669">'+_memEsc(hl.text)+'</span>');
+    prev=hl.end;
+  });
+  parts.push(_memEsc(result.substring(prev)));
+  return parts.join('').replace(/\n/g,'<br>');
 }
 
 function _memRenderDialogue(seg){
@@ -5397,6 +5589,17 @@ function MEM_renderLauncher(){
   h+='<div style="text-align:center;padding:6px 2px;background:#fef3c7;border-radius:6px"><div style="font-size:15px;font-weight:800;color:#d97706">'+learning+'</div><div style="color:#78350f">学習中</div></div>';
   h+='<div style="text-align:center;padding:6px 2px;background:#f3f4f6;border-radius:6px"><div style="font-size:15px;font-weight:800;color:#6b7280">'+(started+(totalSegs-touched))+'</div><div style="color:#374151">初期/未着手</div></div>';
   h+='</div>';
+  // ★ 中断中の進捗があれば再開ボタン
+  var memSaved=LMemProg();
+  if(memSaved && memSaved.qids && memSaved.qi>0 && memSaved.qi<memSaved.qids.length){
+    var mLabel={order:'🔢 順番通り',shuffle:'🔀 シャッフル',dialogue:'🎭 セリフモード'}[memSaved.mode]||memSaved.mode;
+    h+='<div style="margin-bottom:8px;padding:10px;background:linear-gradient(135deg,#fff7ed,#ffedd5);border:1.5px solid #fdba74;border-radius:10px">';
+    h+='<div style="font-size:11px;color:#9a3412;font-weight:800;margin-bottom:6px">⏸ 中断中の暗記セッション</div>';
+    h+='<div style="font-size:12px;color:#7c2d12;margin-bottom:8px">'+mLabel+'　進捗 '+memSaved.qi+'/'+memSaved.qids.length+'条</div>';
+    h+='<div style="display:flex;gap:6px"><button onclick="MEM_start(\''+memSaved.mode+'\')" style="flex:1;padding:9px;background:linear-gradient(135deg,#f97316,#ea580c);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:800;cursor:pointer">▶ 続きから再開</button>';
+    h+='<button onclick="MEM_startNew(\''+memSaved.mode+'\')" style="padding:9px 12px;background:#fff;color:#9a3412;border:1.5px solid #fdba74;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">🔄 最初から</button></div>';
+    h+='</div>';
+  }
   // 開始ボタン
   h+='<button class="ex-rqcard" onclick="MEM_start(\'order\')" style="margin-bottom:6px">';
   h+='<div class="ex-rqicon">🔢</div>';
@@ -5413,11 +5616,179 @@ function MEM_renderLauncher(){
   h+='<div class="ex-rqbody"><div class="ex-rqlabel">セリフモード</div><div class="ex-rqdesc">「競技規則〇〇条には、こう書いてあります」を実戦形式で練習</div></div>';
   h+='<div class="ex-rqcnt"><div class="ex-rqnum">'+totalSegs+'</div><div class="ex-rqunit">条</div></div>';
   h+='<div class="ex-rqarrow">▶</div></button>';
+  // ★ 問題一覧ボタン
+  h+='<button class="ex-rqcard" style="background:#f8fafc;border-color:#cbd5e1;margin-bottom:6px" onclick="MEMLIST_show()">';
+  h+='<div class="ex-rqicon">📋</div>';
+  h+='<div class="ex-rqbody"><div class="ex-rqlabel">問題一覧を見る</div><div class="ex-rqdesc">全'+totalSegs+'条の学習進捗・レベル別定着状況を確認</div></div>';
+  h+='<div class="ex-rqarrow">▶</div></button>';
   // Lv説明
   h+='<div class="ex-rqhint">💡 Lv.1：キーワード空欄（自己採点）／ Lv.2-3：句単位空欄 ／ Lv.4：ほぼ全文入力 ／ Lv.5：完全白紙暗唱　— 条文ごとに自動で難易度が上がります</div>';
   h+='</div>';
   return h;
 }
+
+// MEM_start との差分：強制的に新規開始
+function MEM_startNew(mode){
+  try{ ClearMemProg(); }catch(e){}
+  MEM_start(mode);
+}
+
+// ========================================
+// 📋 問題一覧表示（インプリ・条文暗記 共通モーダル）
+// ========================================
+function RQLIST_show(){
+  var all=RULEQUIZ_build();
+  // 条毎にグループ化
+  var byArt={};
+  all.forEach(function(q){
+    var art=q.artNo||'その他';
+    if(!byArt[art]){byArt[art]={title:q.artTitle||'', items:[]};}
+    byArt[art].items.push(q);
+  });
+  var html='<div class="rqlist-modal-head"><div style="font-weight:800;color:#164e63;font-size:14px">📋 インプリ本文テスト 問題一覧（全'+all.length+'問）</div><button onclick="RQLIST_close()" class="rqlist-close">✕ 閉じる</button></div>';
+  html+='<div class="rqlist-modal-body" id="rqlist-body">';
+  // サマリー
+  var touched=0,mastered=0,totalAns=0,totalOk=0;
+  all.forEach(function(q){
+    var d=rec[q.id];
+    if(d && (d.c+d.w)>0){touched++;totalAns+=(d.c+d.w);totalOk+=d.c;
+      if(d.c>=3 && (d.c/(d.c+d.w))>=0.75)mastered++;}
+  });
+  var rate=totalAns>0?Math.round(totalOk/totalAns*100):0;
+  html+='<div style="padding:12px;background:linear-gradient(135deg,#f0fdfa,#ecfeff);border-radius:10px;margin-bottom:12px"><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center">';
+  html+='<div><div style="font-size:9px;color:#64748b">着手</div><div style="font-size:16px;font-weight:900;color:#0b7285">'+touched+'</div></div>';
+  html+='<div><div style="font-size:9px;color:#64748b">定着</div><div style="font-size:16px;font-weight:900;color:#059669">'+mastered+'</div></div>';
+  html+='<div><div style="font-size:9px;color:#64748b">累計回答</div><div style="font-size:16px;font-weight:900;color:#164e63">'+totalAns+'</div></div>';
+  html+='<div><div style="font-size:9px;color:#64748b">正答率</div><div style="font-size:16px;font-weight:900;color:'+(rate>=70?'#059669':rate>=50?'#f59e0b':rate>0?'#dc2626':'#94a3b8')+'">'+rate+'%</div></div>';
+  html+='</div></div>';
+  // 条毎のリスト
+  var sortedArts=Object.keys(byArt).sort(function(a,b){
+    var an=parseInt(a)||999, bn=parseInt(b)||999;
+    return an-bn;
+  });
+  sortedArts.forEach(function(art){
+    var g=byArt[art];
+    html+='<div style="margin-bottom:12px"><div style="font-weight:800;color:#164e63;background:#ecfeff;padding:6px 10px;border-radius:6px;margin-bottom:4px;font-size:12px">第'+art+'条　'+g.title+'　<span style="color:#64748b;font-weight:600">('+g.items.length+'問)</span></div>';
+    g.items.forEach(function(q){
+      var d=rec[q.id]||{c:0,w:0};
+      var total=d.c+d.w;
+      var acc=total>0?Math.round(d.c/total*100):-1;
+      var statusLabel='未着手',statusColor='#94a3b8',statusBg='#f3f4f6';
+      if(total>0){
+        if(d.c>=3 && (d.c/(d.c+d.w))>=0.75){statusLabel='定着';statusColor='#059669';statusBg='#ecfdf5';}
+        else if(acc>=50){statusLabel='学習中';statusColor='#2563eb';statusBg='#eff6ff';}
+        else {statusLabel='苦手';statusColor='#dc2626';statusBg='#fef2f2';}
+      }
+      var typeLabel={simple:'○×',multiple:'選択',cases:'ケース'}[q.type]||q.type;
+      var preview='';
+      if(q.type==='cases'){
+        preview=_memEsc((q.commonText||q.questionText||'').substring(0,70))+(q.commonText&&q.commonText.length>70?'…':'');
+      } else if(q.type==='multiple'){
+        preview=_memEsc((q.q||'').substring(0,70))+((q.q||'').length>70?'…':'');
+      } else {
+        preview=_memEsc((q.questions&&q.questions[0]?q.questions[0].q:'').substring(0,70))+'…';
+      }
+      html+='<div style="padding:8px 10px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:4px;display:flex;gap:8px;align-items:center">';
+      html+='<div style="flex-shrink:0"><span style="display:inline-block;padding:1px 6px;background:'+statusBg+';color:'+statusColor+';font-size:9px;font-weight:800;border-radius:4px">'+statusLabel+'</span></div>';
+      html+='<div style="flex-shrink:0;font-size:10px;color:#64748b;font-weight:700">'+_memEsc(q.secRef||'')+'</div>';
+      html+='<div style="flex-shrink:0;font-size:9px;color:#64748b;padding:1px 4px;background:#f3f4f6;border-radius:3px">'+typeLabel+'</div>';
+      html+='<div style="flex:1;font-size:11px;color:#334155;line-height:1.4;min-width:0">'+preview+'</div>';
+      if(total>0){
+        html+='<div style="flex-shrink:0;font-size:10px;color:#64748b;text-align:right"><div>'+total+'回</div><div style="color:'+(acc>=70?'#059669':acc>=50?'#f59e0b':'#dc2626')+';font-weight:700">'+acc+'%</div></div>';
+      }
+      html+='</div>';
+    });
+    html+='</div>';
+  });
+  html+='</div>';
+  _showModal(html,'rqlist');
+}
+
+function RQLIST_close(){_closeModal();}
+
+// ====== 条文暗記モード 問題一覧 ======
+function MEMLIST_show(){
+  var all=MEM_build();
+  var byArt={};
+  all.forEach(function(seg){
+    var art=(seg.ruleSrc.match(/第(\d+(?:\/\d+)?)条/)||[])[1]||'その他';
+    if(!byArt[art]){byArt[art]={title:seg.num||'', items:[]};}
+    byArt[art].items.push(seg);
+  });
+  var touched=0,mastered=0,totalAns=0,totalOk=0;
+  all.forEach(function(seg){
+    if(memRec[seg.id]){
+      touched++;
+      Object.keys(memRec[seg.id].byLevel).forEach(function(lv){
+        var d=memRec[seg.id].byLevel[lv];
+        totalAns+=(d.c+d.w);totalOk+=d.c;
+      });
+      var cl=MEM_classify(seg.id);
+      if(cl==='master'||cl==='advanced')mastered++;
+    }
+  });
+  var rate=totalAns>0?Math.round(totalOk/totalAns*100):0;
+  var html='<div class="rqlist-modal-head"><div style="font-weight:800;color:#164e63;font-size:14px">📋 条文暗記モード 問題一覧（全'+all.length+'条）</div><button onclick="RQLIST_close()" class="rqlist-close">✕ 閉じる</button></div>';
+  html+='<div class="rqlist-modal-body">';
+  html+='<div style="padding:12px;background:linear-gradient(135deg,#f0fdfa,#ecfeff);border-radius:10px;margin-bottom:12px"><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center">';
+  html+='<div><div style="font-size:9px;color:#64748b">着手</div><div style="font-size:16px;font-weight:900;color:#0b7285">'+touched+'</div></div>';
+  html+='<div><div style="font-size:9px;color:#64748b">上級+定着</div><div style="font-size:16px;font-weight:900;color:#059669">'+mastered+'</div></div>';
+  html+='<div><div style="font-size:9px;color:#64748b">累計回答</div><div style="font-size:16px;font-weight:900;color:#164e63">'+totalAns+'</div></div>';
+  html+='<div><div style="font-size:9px;color:#64748b">正答率</div><div style="font-size:16px;font-weight:900;color:'+(rate>=70?'#059669':rate>=50?'#f59e0b':rate>0?'#dc2626':'#94a3b8')+'">'+rate+'%</div></div>';
+  html+='</div></div>';
+  var sortedArts=Object.keys(byArt).sort(function(a,b){
+    var an=parseInt(a)||999, bn=parseInt(b)||999;
+    return an-bn;
+  });
+  sortedArts.forEach(function(art){
+    var g=byArt[art];
+    html+='<div style="margin-bottom:12px"><div style="font-weight:800;color:#164e63;background:#ecfeff;padding:6px 10px;border-radius:6px;margin-bottom:4px;font-size:12px">第'+art+'条　<span style="color:#64748b;font-weight:600">('+g.items.length+'セグメント)</span></div>';
+    g.items.forEach(function(seg){
+      var cl=MEM_classify(seg.id);
+      var statusLabel={'master':'完全定着','advanced':'上級','learning':'学習中','started':'初期','new':'未着手'}[cl]||'未着手';
+      var statusColor={'master':'#059669','advanced':'#2563eb','learning':'#8b5cf6','started':'#f59e0b','new':'#94a3b8'}[cl]||'#94a3b8';
+      var statusBg={'master':'#ecfdf5','advanced':'#eff6ff','learning':'#f5f3ff','started':'#fef3c7','new':'#f3f4f6'}[cl]||'#f3f4f6';
+      // レベルごとの進捗
+      var lvInfo='';
+      if(memRec[seg.id]){
+        for(var lv=1;lv<=5;lv++){
+          var d=memRec[seg.id].byLevel[lv];
+          if(d && (d.c+d.w)>0){
+            var isMature=(d.srsInterval>=21 && d.c>=3 && (d.c/(d.c+d.w))>=0.75);
+            lvInfo+='<span style="display:inline-block;padding:1px 4px;margin:0 1px;background:'+(isMature?'#059669':'#94a3b8')+';color:#fff;font-size:9px;font-weight:700;border-radius:3px">Lv'+lv+'</span>';
+          }
+        }
+      }
+      html+='<div style="padding:8px 10px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:4px;display:flex;gap:8px;align-items:center">';
+      html+='<div style="flex-shrink:0"><span style="display:inline-block;padding:1px 6px;background:'+statusBg+';color:'+statusColor+';font-size:9px;font-weight:800;border-radius:4px">'+statusLabel+'</span></div>';
+      html+='<div style="flex-shrink:0;font-size:10px;color:#64748b;font-weight:700">'+_memEsc(seg.ruleSrc)+'</div>';
+      html+='<div style="flex:1;font-size:11px;color:#334155;line-height:1.4;min-width:0">'+_memEsc(seg.fullText.replace(/\n/g,'　').substring(0,60))+'…</div>';
+      if(lvInfo)html+='<div style="flex-shrink:0">'+lvInfo+'</div>';
+      html+='</div>';
+    });
+    html+='</div>';
+  });
+  html+='</div>';
+  _showModal(html,'memlist');
+}
+
+// ========== 共通モーダル ==========
+function _showModal(innerHtml, idSuffix){
+  _closeModal();
+  var m=document.createElement('div');
+  m.id='generic-modal';
+  m.className='prev-modal show';
+  m.innerHTML='<div class="prev-modal-box" style="max-width:860px"><div style="display:flex;flex-direction:column;max-height:90vh">'+innerHtml+'</div></div>';
+  document.body.appendChild(m);
+  m.addEventListener('click',function(e){if(e.target===m)_closeModal();});
+  document.addEventListener('keydown', _modalEsc);
+}
+function _closeModal(){
+  var m=document.getElementById('generic-modal');
+  if(m)m.parentNode.removeChild(m);
+  document.removeEventListener('keydown', _modalEsc);
+}
+function _modalEsc(e){if(e.key==='Escape')_closeModal();}
 
 // デイリーの一時停止 → ホームに戻る
 function DC_pauseToHome(){
@@ -13346,7 +13717,32 @@ function RULEQUIZ_coveredArticles(){
   return Object.keys(arts).sort(function(a,b){return Number(a)-Number(b);});
 }
 
-function EXAM_startRuleQuiz(filter){
+// ====== インプリ本文テスト 進捗保存 ======
+function LRQProg(){try{return JSON.parse(localStorage.getItem(SK_RQPROG)||'null');}catch(e){return null;}}
+function SRQProg(filter){
+  try{
+    if(!queue||queue.length===0)return;
+    // ID順に保存（ALLに依存しない）
+    var data={filter:filter, qids:queue.map(function(c){return c.id;}), qi:qi, ses:{ok:ses.ok,ng:ses.ng}, ts:Date.now()};
+    localStorage.setItem(SK_RQPROG, JSON.stringify(data));
+  }catch(e){}
+}
+function ClearRQProg(){try{localStorage.removeItem(SK_RQPROG);}catch(e){}}
+
+function EXAM_startRuleQuiz(filter, forceNew){
+  // ★ 途中再開チェック
+  if(!forceNew){
+    var saved=LRQProg();
+    if(saved && saved.filter===filter && saved.qi>0 && saved.qi<saved.qids.length){
+      if(confirm('インプリ本文テストの続きから再開しますか？\n進捗: '+saved.qi+'/'+saved.qids.length+'　正解: '+saved.ses.ok)){
+        EXAM_resumeRuleQuiz(saved);
+        return;
+      }
+      ClearRQProg();
+    }
+  } else {
+    ClearRQProg();
+  }
   var all=RULEQUIZ_build();
   var pool=all.slice();
   if(filter==='simple')pool=pool.filter(function(q){return q.type==='simple'||!q.type;});
@@ -13356,9 +13752,27 @@ function EXAM_startRuleQuiz(filter){
   for(var i=pool.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=pool[i];pool[i]=pool[j];pool[j]=t;}
   if(pool.length>30)pool=pool.slice(0,30);
   queue=pool;
-  qi=0;chosen=null;ses={ok:0,ng:0};mode='shuffle';
+  qi=0;chosen=null;ses={ok:0,ng:0};mode='rulequiz';
+  _rqCurrentFilter=filter;
   try{ PREV_resetMain(); }catch(e){}
-  ['order','shuffle','wrong','mini','srs','daily'].forEach(function(k){var el=document.getElementById('m-'+k);if(el)el.className='mode-tab'+(k==='shuffle'?' active':'');});
+  SRQProg(filter);
+  HIDE_TOP();ST('quiz');RQ();
+}
+
+var _rqCurrentFilter=null;
+
+function EXAM_resumeRuleQuiz(saved){
+  var all=RULEQUIZ_build();
+  var byId={};for(var i=0;i<all.length;i++)byId[all[i].id]=all[i];
+  var pool=[];for(var j=0;j<saved.qids.length;j++){if(byId[saved.qids[j]])pool.push(byId[saved.qids[j]]);}
+  if(pool.length===0){ClearRQProg();alert('再開データが無効です。新規開始します');EXAM_startRuleQuiz(saved.filter,true);return;}
+  queue=pool;
+  qi=Math.min(saved.qi, pool.length);
+  chosen=null;
+  ses={ok:saved.ses.ok, ng:saved.ses.ng};
+  mode='rulequiz';
+  _rqCurrentFilter=saved.filter;
+  try{ PREV_resetMain(); }catch(e){}
   HIDE_TOP();ST('quiz');RQ();
 }
 
@@ -13400,6 +13814,22 @@ function EXAM_renderRuleQuiz(){
   h+='<div class="ex-rqicon">🎲</div>';
   h+='<div class="ex-rqbody"><div class="ex-rqlabel">全部からランダム</div><div class="ex-rqdesc">3タイプ混在でシャッフル（最大30問）</div></div>';
   h+='<div class="ex-rqcnt"><div class="ex-rqnum">'+total+'</div><div class="ex-rqunit">問</div></div>';
+  h+='<div class="ex-rqarrow">▶</div></button>';
+  // ★ 再開ボタン（進捗がある場合のみ表示）
+  var rqSaved=LRQProg();
+  if(rqSaved && rqSaved.qi>0 && rqSaved.qi<rqSaved.qids.length){
+    var filterLabel={simple:'○×判定',multiple:'選択肢',cases:'ケース分岐',all:'全ランダム'}[rqSaved.filter]||rqSaved.filter;
+    h+='<div style="margin-top:8px;padding:10px;background:linear-gradient(135deg,#fff7ed,#ffedd5);border:1.5px solid #fdba74;border-radius:10px">';
+    h+='<div style="font-size:11px;color:#9a3412;font-weight:800;margin-bottom:6px">⏸ 中断中の学習があります</div>';
+    h+='<div style="font-size:12px;color:#7c2d12;margin-bottom:8px">'+filterLabel+'タイプ　進捗 '+rqSaved.qi+'/'+rqSaved.qids.length+'問　正解 '+rqSaved.ses.ok+'問</div>';
+    h+='<div style="display:flex;gap:6px"><button onclick="EXAM_startRuleQuiz(\''+rqSaved.filter+'\')" style="flex:1;padding:9px;background:linear-gradient(135deg,#f97316,#ea580c);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:800;cursor:pointer">▶ 続きから再開</button>';
+    h+='<button onclick="EXAM_startRuleQuiz(\''+rqSaved.filter+'\',true)" style="padding:9px 12px;background:#fff;color:#9a3412;border:1.5px solid #fdba74;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">🔄 最初から</button></div>';
+    h+='</div>';
+  }
+  // ★ 問題一覧ボタン
+  h+='<button class="ex-rqcard" style="background:#f8fafc;border-color:#cbd5e1;margin-top:8px" onclick="RQLIST_show()">';
+  h+='<div class="ex-rqicon">📋</div>';
+  h+='<div class="ex-rqbody"><div class="ex-rqlabel">問題一覧を見る</div><div class="ex-rqdesc">全'+total+'問の履歴・正答率を一覧で確認</div></div>';
   h+='<div class="ex-rqarrow">▶</div></button>';
   h+='<div class="ex-rqhint">💡 解答時に必ずインプリ原文を全文表示。✓確認カウントは規則閲覧と通算されます</div>';
   h+='</div>';

@@ -5458,10 +5458,10 @@ function EXAM_render(){
   html+='</div></div>';
   // ========== 3. 実践メニュー（デフォルト展開）==========
   var practiceBody='';
+  practiceBody+=MEM_renderLauncher();     // ★ 条文暗記モード：先頭に配置（新規追加）
   practiceBody+=EXAM_renderMockLauncher();
   practiceBody+=EXAM_renderWrongMode();
   practiceBody+=EXAM_renderRuleQuiz();
-  practiceBody+=MEM_renderLauncher();
   html+='<a id="ex-g-practice"></a>'+_exGroupShell('practice','🎯 実践メニュー','🎯',practiceBody,'模試・苦手・条文テスト');
   // ========== 4. 進捗・分析（デフォルト折りたたみ）==========
   var analyticsBody='';

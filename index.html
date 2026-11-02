@@ -249,7 +249,14 @@ button,.cbtn,.tnb,.mode-tab,.fbtn,.rfb,.rswb,.jump-btn,.next-btn,.app-header-btn
 .mem-input:focus{outline:none;border-color:#0b7285;box-shadow:0 0 0 3px rgba(11,114,133,.15)}
 .mem-full-answer{padding:14px;background:#fff;border-radius:12px;border:2px solid #0b7285;box-shadow:0 2px 12px rgba(11,114,133,.1)}
 .mem-full-lbl{font-size:11px;color:#0b7285;font-weight:800;margin-bottom:8px;letter-spacing:.05em}
-.mem-full-text{font-size:14px;line-height:1.8;color:#0f172a;white-space:pre-wrap}
+.mem-full-text{font-size:14px;line-height:2;color:#0f172a;white-space:pre-wrap}
+/* Lv.1-3の空欄部分ハイライト（黄色） */
+.mem-highlight{display:inline-block;background:linear-gradient(180deg,#fef3c7 55%,#fde68a 55%);color:#78350f;padding:2px 7px;margin:0 1px;border-radius:5px;font-weight:800;border-bottom:2px solid #f59e0b;box-shadow:0 1px 2px rgba(245,158,11,.2);position:relative}
+.mem-highlight-num{display:inline-block;background:#f59e0b;color:#fff;font-size:9px;font-weight:900;border-radius:99px;padding:1px 5px;margin-left:4px;vertical-align:middle;line-height:1}
+/* Lv.4-5のテキスト差分ハイライト */
+.mem-diff-match{background:#dcfce7;color:#15803d;padding:0 1px;border-radius:2px}
+.mem-diff-missing{background:#fee2e2;color:#991b1b;padding:0 1px;border-radius:2px;text-decoration:underline wavy #dc2626;text-underline-offset:3px}
+.mem-diff-extra{background:#fee2e2;color:#991b1b;padding:0 1px;border-radius:2px;text-decoration:line-through #dc2626}
 .mem-rate-btn{padding:14px 8px;border:none;border-radius:12px;cursor:pointer;color:#fff;font-size:13px;font-weight:800;transition:transform .1s;box-shadow:0 2px 6px rgba(0,0,0,.1)}
 .mem-rate-btn:active{transform:scale(.96)}
 .mem-rate-master{background:linear-gradient(135deg,#059669,#047857)}
@@ -4806,11 +4813,11 @@ function MEM_makeCloze(fullText, level){
   mask.forEach(function(mk,idx){
     parts.push(body.substring(prev,mk.start));
     parts.push('<span class="mem-blank" data-ans="'+_memEsc(mk.answer)+'">(____'+(idx+1)+'____)</span>');
-    blanks.push({answer:mk.answer});
+    blanks.push({answer:mk.answer, start:mk.start, end:mk.end});
     prev=mk.end;
   });
   parts.push(body.substring(prev));
-  return {text:parts.join(''), blanks:blanks, mode:'cloze'};
+  return {text:parts.join(''), blanks:blanks, mode:'cloze', body:body};
 }
 
 function _memEsc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -5051,42 +5058,187 @@ function _memRenderDialogue(seg){
 function MEM_revealDialogue(){
   var seg=memQueue[memIdx];
   var el=document.getElementById('mem-dialog-cite-text');
-  if(el){el.textContent=seg.fullText;el.style.color='#1d2939';}
+  if(el){
+    // セリフモードは暗唱扱い（Lv4相当）→ 原文をそのまま強調表示
+    el.innerHTML='<strong style="color:#0b1d4a;background:#fef3c7;padding:2px 4px;border-radius:3px">'+_memEsc(seg.fullText).replace(/\n/g,'<br>')+'</strong>';
+    el.style.color='#1d2939';
+  }
   var btn=document.getElementById('mem-dlg-reveal'); if(btn)btn.style.display='none';
   // 自己採点を表示
   var r=document.getElementById('mem-rate'); if(r)r.style.display='block';
 }
 
-// 答えを見るボタン（通常モード）
+// 答えを見るボタン（通常モード） — 空欄部分をハイライト表示
 function MEM_showAnswer(){
   var seg=memQueue[memIdx];
   var el=document.getElementById('mem-answer');
   if(!el)return;
-  el.innerHTML='<div class="mem-full-answer"><div class="mem-full-lbl">📖 原文（正解）</div><div class="mem-full-text">'+_memEsc(seg.fullText).replace(/\n/g,'<br>')+'</div></div>';
+  el.innerHTML=_memBuildAnswerDisplay(seg, memLevel);
   el.style.display='block';
   var r=document.getElementById('mem-rate'); if(r)r.style.display='block';
   var showBtn=document.getElementById('mem-show-ans'); if(showBtn)showBtn.style.display='none';
+  // ハイライト部分へスクロール
+  setTimeout(function(){
+    try{ el.scrollIntoView({behavior:'smooth', block:'start'}); }catch(e){}
+  }, 50);
 }
 
-// Lv.4-5のテキスト入力チェック
+// 答え表示用HTMLを構築（レベル別にハイライト処理）
+function _memBuildAnswerDisplay(seg, level){
+  var fullText=seg.fullText;
+  // ---- Lv.4-5 (テキスト入力モード): 原文を単純に見せる + 入力モード説明 ----
+  if(level===4||level===5){
+    return '<div class="mem-full-answer">'
+      +'<div class="mem-full-lbl">📖 原文（正解） — Lv.'+level+'は全文暗唱</div>'
+      +'<div class="mem-full-text">'+_memEsc(fullText).replace(/\n/g,'<br>')+'</div>'
+      +'<div style="margin-top:10px;padding:8px 10px;background:#fef3c7;border-radius:8px;font-size:11px;color:#92400e;border-left:3px solid #f59e0b;line-height:1.6">💡 Lv.'+level+'は<strong>全文を自分で思い出す</strong>段階です。この原文と自分の覚えていた内容を照らし合わせて、どの程度言えたか自己評価してください。</div>'
+      +'</div>';
+  }
+  // ---- Lv.1-3 (穴埋めモード): 空欄部分をハイライト ----
+  var cz=MEM_makeCloze(fullText, level);
+  // タイトル行の処理
+  var titleHTML='';
+  var body=fullText;
+  var nl=body.indexOf('\n');
+  if(nl>0 && nl<30){
+    titleHTML='<div style="color:#64748b;font-size:11px;margin-bottom:6px;font-weight:700;letter-spacing:.03em">'+_memEsc(fullText.substring(0,nl))+'</div>';
+    body=cz.body||body.substring(nl+1);
+  }
+  // 空欄0ならそのまま
+  if(!cz.blanks || cz.blanks.length===0){
+    return '<div class="mem-full-answer">'
+      +'<div class="mem-full-lbl">📖 原文（正解）</div>'
+      +'<div class="mem-full-text">'+titleHTML+_memEsc(body).replace(/\n/g,'<br>')+'</div>'
+      +'</div>';
+  }
+  // 空欄部分をハイライト
+  var parts=[];
+  var prev=0;
+  cz.blanks.forEach(function(b, idx){
+    parts.push(_memEsc(body.substring(prev, b.start)));
+    parts.push('<span class="mem-highlight" title="空欄'+(idx+1)+'：'+_memEsc(b.answer)+'">'+_memEsc(b.answer)+'<span class="mem-highlight-num">'+(idx+1)+'</span></span>');
+    prev=b.end;
+  });
+  parts.push(_memEsc(body.substring(prev)));
+  var legend='<div style="margin-top:10px;padding:10px 12px;background:#fef3c7;border-radius:8px;font-size:11px;color:#92400e;border-left:3px solid #f59e0b;line-height:1.6">'
+    +'<strong>💡 ハイライト部分</strong>がLv.'+level+'の空欄だった <strong>'+cz.blanks.length+'箇所</strong>です。'
+    +'<br>覚えていた箇所／忘れていた箇所を数えて、下の自己採点に反映してください。'
+    +'</div>';
+  return '<div class="mem-full-answer">'
+    +'<div class="mem-full-lbl">📖 原文（正解） — <span style="background:#fef3c7;color:#92400e;padding:2px 7px;border-radius:4px;font-size:11px">黄色部分</span>が空欄だった箇所</div>'
+    +'<div class="mem-full-text">'+titleHTML+parts.join('').replace(/\n/g,'<br>')+'</div>'
+    +legend
+    +'</div>';
+}
+
+// Lv.4-5のテキスト入力チェック（差分ハイライト付き）
 function MEM_checkInput(){
   var seg=memQueue[memIdx];
   var input=document.getElementById('mem-input');
   if(!input)return;
   var userText=input.value.trim();
   var correct=seg.fullText.replace(/\n/g,'').trim();
-  // 一致率計算（簡易版：共通文字数 / 全文字数）
+  // 一致率計算
   var matchRate=_memSimilar(userText, correct);
   var el=document.getElementById('mem-answer');
   if(!el)return;
   var color=matchRate>=80?'#059669':matchRate>=60?'#f59e0b':'#dc2626';
-  el.innerHTML='<div class="mem-full-answer"><div class="mem-full-lbl">📖 原文（正解）</div><div class="mem-full-text">'+_memEsc(seg.fullText).replace(/\n/g,'<br>')+'</div>'
-    +'<div style="margin-top:10px;padding:10px;background:#fff;border-radius:8px;border:1.5px solid '+color+'"><div style="font-size:11px;color:#64748b;margin-bottom:4px">✏️ あなたの回答</div><div style="font-size:13px">'+_memEsc(userText||'（未入力）')+'</div></div>'
-    +'<div style="margin-top:8px;text-align:center;font-weight:700;color:'+color+'">一致度: '+matchRate+'%</div>'
+  var statusLabel=matchRate>=80?'🎯 ほぼ完璧！':matchRate>=60?'👍 良い感じ':matchRate>=30?'💪 まだ練習が必要':'📖 読み込みから始めよう';
+  // 原文側：入力と一致した部分をハイライト（覚えてた所）
+  // 入力側：原文に含まれない部分を赤色（間違い）
+  var diff=_memDiffChars(userText, correct);
+  // 原文側 HTML（覚えてた部分を緑でハイライト）
+  var correctHtml='';
+  var userHtml='';
+  var titleHtml='';
+  var fullText=seg.fullText;
+  var nl=fullText.indexOf('\n');
+  if(nl>0 && nl<30){
+    titleHtml='<div style="color:#64748b;font-size:11px;margin-bottom:6px;font-weight:700">'+_memEsc(fullText.substring(0,nl))+'</div>';
+  }
+  // 原文を文字単位でレンダー
+  diff.correctRender.forEach(function(ch){
+    if(ch.matched){
+      correctHtml+='<span class="mem-diff-match">'+_memEsc(ch.c)+'</span>';
+    } else {
+      correctHtml+='<span class="mem-diff-missing">'+_memEsc(ch.c)+'</span>';
+    }
+  });
+  // 入力を文字単位でレンダー
+  diff.userRender.forEach(function(ch){
+    if(ch.matched){
+      userHtml+='<span class="mem-diff-match">'+_memEsc(ch.c)+'</span>';
+    } else {
+      userHtml+='<span class="mem-diff-extra">'+_memEsc(ch.c)+'</span>';
+    }
+  });
+  if(!userText){userHtml='<span style="color:#94a3b8">（未入力）</span>';}
+  el.innerHTML='<div class="mem-full-answer">'
+    +'<div class="mem-full-lbl">📖 原文（正解） — <span style="background:#dcfce7;color:#15803d;padding:2px 7px;border-radius:4px;font-size:11px">緑</span>=覚えてた、<span style="background:#fee2e2;color:#991b1b;padding:2px 7px;border-radius:4px;font-size:11px">赤</span>=思い出せてない</div>'
+    +'<div class="mem-full-text">'+titleHtml+correctHtml.replace(/\n/g,'<br>')+'</div>'
+    +'<div style="margin-top:12px;padding:10px 12px;background:#fff;border-radius:8px;border:1.5px solid '+color+'">'
+      +'<div style="font-size:11px;color:#64748b;margin-bottom:4px;font-weight:700">✏️ あなたの回答 — <span style="background:#fee2e2;color:#991b1b;padding:1px 6px;border-radius:4px">赤</span>は原文に無い余計な部分</div>'
+      +'<div style="font-size:13px;line-height:1.8">'+userHtml+'</div>'
+    +'</div>'
+    +'<div style="margin-top:10px;text-align:center">'
+      +'<div style="font-size:11px;color:#64748b;margin-bottom:4px">文字一致度</div>'
+      +'<div style="font-size:28px;font-weight:900;color:'+color+'">'+matchRate+'%</div>'
+      +'<div style="font-size:13px;font-weight:700;color:'+color+';margin-top:4px">'+statusLabel+'</div>'
+    +'</div>'
     +'</div>';
   el.style.display='block';
   input.disabled=true;
   var r=document.getElementById('mem-rate'); if(r)r.style.display='block';
+  // 結果へスクロール
+  setTimeout(function(){
+    try{ el.scrollIntoView({behavior:'smooth', block:'start'}); }catch(e){}
+  }, 50);
+}
+
+// 文字単位の差分計算（原文と入力それぞれ、どの文字が一致したか）
+function _memDiffChars(userText, correctText){
+  // 空白と句読点を除いた基準で比較
+  function _stripSpace(s){return (s||'').replace(/[\s　]/g,'');}
+  var uStripped=_stripSpace(userText);
+  var cStripped=_stripSpace(correctText);
+  // 原文側：各文字について、ユーザー入力に含まれているかマーク
+  // 入力側：各文字について、原文に含まれているかマーク
+  var uUsed={};
+  var cUsed={};
+  // マッチングテーブル（貪欲法）
+  for(var i=0;i<cStripped.length;i++){
+    var c=cStripped.charAt(i);
+    for(var j=0;j<uStripped.length;j++){
+      if(!uUsed[j] && !cUsed[i] && uStripped.charAt(j)===c){
+        uUsed[j]=true;cUsed[i]=true;break;
+      }
+    }
+  }
+  // 原文レンダー：元の文字列順で、空白はそのまま、他は一致判定
+  var correctRender=[];
+  var sIdx=0;
+  for(var k=0;k<correctText.length;k++){
+    var ch=correctText.charAt(k);
+    if(ch===' '||ch==='　'||ch==='\n'||ch==='\t'){
+      correctRender.push({c:ch, matched:true});
+    } else {
+      correctRender.push({c:ch, matched: cUsed[sIdx]===true});
+      sIdx++;
+    }
+  }
+  // 入力レンダー
+  var userRender=[];
+  var uIdx=0;
+  for(var m=0;m<userText.length;m++){
+    var ch2=userText.charAt(m);
+    if(ch2===' '||ch2==='　'||ch2==='\n'||ch2==='\t'){
+      userRender.push({c:ch2, matched:true});
+    } else {
+      userRender.push({c:ch2, matched: uUsed[uIdx]===true});
+      uIdx++;
+    }
+  }
+  return {correctRender:correctRender, userRender:userRender};
 }
 function _memSimilar(a,b){
   if(!a||!b)return 0;

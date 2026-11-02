@@ -227,6 +227,46 @@ button,.cbtn,.tnb,.mode-tab,.fbtn,.rfb,.rswb,.jump-btn,.next-btn,.app-header-btn
 .back-float.from-daily{background:#3b5bdb}
 .back-float.from-memo{background:#f79009}
 
+/* 🧠 条文暗記モード (MEM) */
+.mem-topnav{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;padding:0 2px}
+.mem-nav-info{font-size:12px;color:var(--text3);font-weight:700}
+.mem-nav-pct{font-size:12px;color:var(--text4);font-weight:700}
+.mem-progbar{height:6px;background:#e4e7ec;border-radius:99px;overflow:hidden;margin-bottom:12px}
+.mem-progfill{height:100%;background:linear-gradient(90deg,#0b7285,#06b6d4);border-radius:99px;transition:width .3s}
+.mem-card{border-left:4px solid #0b7285}
+.mem-lv-badge{display:inline-block;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:800;color:#fff}
+.mem-lv-1{background:#059669}
+.mem-lv-2{background:#3b82f6}
+.mem-lv-3{background:#8b5cf6}
+.mem-lv-4{background:#f59e0b}
+.mem-lv-5{background:#dc2626}
+.mem-cloze{margin-top:12px;padding:14px;background:#f8fafc;border-radius:12px;border:1.5px solid #e2e8f0}
+.mem-cloze-lbl{font-size:11px;color:#64748b;font-weight:700;margin-bottom:8px}
+.mem-cloze-text{font-size:14px;line-height:1.9;color:#1d2939;letter-spacing:.02em}
+.mem-blank{display:inline-block;min-width:60px;padding:1px 10px;margin:0 2px;background:#fef3c7;border:1.5px dashed #f59e0b;border-radius:6px;color:#92400e;font-weight:700;font-size:12px;vertical-align:middle}
+.mem-hint{font-size:11px;color:#0e7490;background:#ecfeff;padding:8px 10px;border-radius:8px;margin-bottom:8px;border-left:3px solid #06b6d4}
+.mem-input{width:100%;padding:10px;border:1.5px solid #cbd5e1;border-radius:10px;font-size:14px;line-height:1.7;font-family:inherit;resize:vertical;box-sizing:border-box;background:#fff;color:#1d2939}
+.mem-input:focus{outline:none;border-color:#0b7285;box-shadow:0 0 0 3px rgba(11,114,133,.15)}
+.mem-full-answer{padding:14px;background:#fff;border-radius:12px;border:2px solid #0b7285;box-shadow:0 2px 12px rgba(11,114,133,.1)}
+.mem-full-lbl{font-size:11px;color:#0b7285;font-weight:800;margin-bottom:8px;letter-spacing:.05em}
+.mem-full-text{font-size:14px;line-height:1.8;color:#0f172a;white-space:pre-wrap}
+.mem-rate-btn{padding:14px 8px;border:none;border-radius:12px;cursor:pointer;color:#fff;font-size:13px;font-weight:800;transition:transform .1s;box-shadow:0 2px 6px rgba(0,0,0,.1)}
+.mem-rate-btn:active{transform:scale(.96)}
+.mem-rate-master{background:linear-gradient(135deg,#059669,#047857)}
+.mem-rate-ok{background:linear-gradient(135deg,#f59e0b,#d97706)}
+.mem-rate-ng{background:linear-gradient(135deg,#dc2626,#991b1b)}
+/* セリフモード */
+.mem-dialogue{margin-top:12px}
+.mem-dialog-balloon{padding:12px 14px;border-radius:14px;margin-bottom:10px;position:relative}
+.mem-dialog-player{background:#f3f4f6;border-left:4px solid #6b7280;margin-right:40px}
+.mem-dialog-ref{background:#eff6ff;border-right:4px solid #2563eb;margin-left:40px}
+.mem-dialog-who{font-size:10px;color:#64748b;font-weight:800;margin-bottom:4px;letter-spacing:.05em}
+.mem-dialog-what{font-size:13px;line-height:1.6;color:#1d2939}
+.mem-dialog-cite{margin-top:10px;padding:10px;background:#fff;border-radius:8px;border:1.5px solid #cbd5e1;font-size:13px;line-height:1.7}
+/* 全体スクリーン */
+#mem-screen{padding:12px}
+.mem-screen-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+
 
 
 /* メモボタン */
@@ -1361,6 +1401,14 @@ if ('serviceWorker' in navigator) {
 <!-- 🎯 B級受審対策タブ -->
 <div id="T-exam" style="display:none">
   <div id="exam-content"></div>
+  <!-- 🧠 条文暗記モード画面（起動時のみ表示） -->
+  <div id="mem-screen" style="display:none">
+    <div class="mem-screen-head">
+      <button onclick="MEM_exitToExam()" style="padding:6px 12px;border-radius:8px;border:1.5px solid #cbd5e1;background:#fff;color:#475467;font-size:12px;font-weight:700;cursor:pointer">◀ 昇格対策に戻る</button>
+      <div style="font-size:12px;color:#64748b;font-weight:700">🧠 条文暗記モード</div>
+    </div>
+    <div id="mem-body"></div>
+  </div>
 </div>
 
 <!-- 2027ルール改定タブ -->
@@ -1610,6 +1658,7 @@ var SK_SHARE='jba_share_v1';
 var SK='jba_v3', SKR='jba_rule_v1', SKD='jba_daily_v1', SKDP='jba_daily_progress_v1', SKM='jba_memo_v1', SK_QP='jba_qprog_v1', SK_MINI='jba_mini_v1', SK_SESS='jba_sess_v1', SK_GOAL='jba_goal_v1';
 // B級受審対策用の新規キー
 var SK_EXAM='jba_exam_v1', SK_STUDYLOG='jba_studylog_v1', SK_TIMING='jba_timing_v1', SK_MOCK='jba_mock_v1', SK_BADGES='jba_badges_v1', SK_JUMP='jba_jumpstack_v1';
+var SK_MEMREC='jba_mem_rec_v1', SK_MEMPROG='jba_mem_prog_v1';
 
 // ====== 状態 ======
 var mode='order',queue=[],qi=0,ses={ok:0,ng:0},chosen=null,miniHistory=[],sessions=[],studyGoal=null;
@@ -1618,6 +1667,14 @@ var shareMyName='',shareRoomId='',shareConnected=false;
 var lf='all',rt='rule',rfilter='all';
 var rec={},rchk={},daily={},memos=[];
 var dcQueue=[],dcIdx=0,dcSes={ok:0,ng:0},dcChosen=null;
+// ====== 条文暗記モード (MEM) ======
+var MEM_DATA=null;         // 条文セグメント配列（初回構築後キャッシュ）
+var memRec={};             // 暗記記録 { segId: { byLevel: {1:{c,w,srsRepeat,srsInterval,nextReview}}, lastLevel, ts } }
+var memQueue=[],memIdx=0,memSes={ok:0,ng:0,mastered:0,again:0};
+var memMode='order';       // 'order' | 'shuffle' | 'dialogue'
+var memLevel=1;            // 1-5
+var memChosen=null;        // 自己採点（'master'|'ok'|'ng'）が済んだか
+var _histMem={};           // セッション履歴（前の問題へ戻る用）
 var backFromTab=null;
 var memoFilter='all';
 var calYear=2026,calMonth=7;
@@ -4654,6 +4711,562 @@ function _restoreAnswered(where){
   } catch(e){ console.error('_restoreAnswered error:', e); }
 }
 
+// ======================================================
+// 🧠 条文暗記モード (MEM) — ルールブック原文を5段階で定着させる
+// ======================================================
+// ---- データ構築 ----
+function MEM_build(){
+  if(MEM_DATA)return MEM_DATA;
+  var seen={}; var out=[];
+  if(typeof ALL==='undefined'||!ALL){MEM_DATA=[];return out;}
+  for(var i=0;i<ALL.length;i++){
+    var c=ALL[i];
+    if(!c.ruleText||!c.ruleSrc)continue;
+    // ruleSrc をキーに重複排除。長い本文を優先。
+    if(seen[c.ruleSrc]){
+      if(c.ruleText.length>seen[c.ruleSrc].fullText.length){
+        seen[c.ruleSrc].fullText=c.ruleText;
+      }
+      continue;
+    }
+    var seg={
+      id:'mem_'+c.ruleSrc.replace(/[\s\-\/,、・（）()]/g,'_'),
+      ruleSrc:c.ruleSrc,
+      num:c.num,
+      level:c.level,
+      fullText:c.ruleText,
+      scenarioQ:c.q,              // セリフモード用シナリオ
+      scenarioExp:c.explanation   // セリフモード用解説
+    };
+    seen[c.ruleSrc]=seg;
+    out.push(seg);
+  }
+  MEM_DATA=out;
+  return out;
+}
+
+// ---- 穴埋め自動生成（レベル別） ----
+// 戻り値 { text: "部分...____...", blanks: [{answer:'8秒'}, ...] }
+function MEM_makeCloze(fullText, level){
+  if(!fullText)return {text:'',blanks:[]};
+  // 条文タイトル行（「ルール 8-8」等）は除く：本文最後の改行の後ろ部分だけを使う
+  var body=fullText;
+  var nl=body.indexOf('\n');
+  if(nl>0 && nl<30){body=body.substring(nl+1);}
+  var blanks=[];
+  var mask=[]; // {start,end,answer}
+  var regexes=[];
+  if(level===1){
+    // 数字と秒・分・個・人・回・点などの単位、および主要用語を2-3箇所だけ空ける
+    regexes=[
+      /\d+(?:\.\d+)?(?:秒|分|個|人|回|点|m|cm)?/g,
+      /(?:アンスポーツマンライクファウル|ディスクォリファイングファウル|テクニカルファウル|ショットクロック|バックコート|フロントコート|スローイン|ジャンプボール|オルタネイティングポゼッション)/g
+    ];
+  } else if(level===2){
+    // 数字＋単位すべて、主要用語、助詞まわりの名詞句
+    regexes=[
+      /\d+(?:\.\d+)?(?:秒|分|個|人|回|点|m|cm|本)?/g,
+      /(?:アンスポーツマンライクファウル|ディスクォリファイングファウル|テクニカルファウル|パーソナルファウル|チームファウル|ショットクロック|ゲームクロック|バックコート|フロントコート|スローイン|スローインライン|ジャンプボール|オルタネイティングポゼッション|フリースロー|リバウンド|バスケット|リング|バックボード|タイムアウト)/g,
+      /(?:プレーヤー|交代要員|チームメンバー|ヘッドコーチ|審判)/g
+    ];
+  } else if(level===3){
+    // 短い句（3-10文字の名詞/動詞句）を広めに空ける
+    regexes=[
+      /\d+(?:\.\d+)?(?:秒|分|個|人|回|点|m|cm|本)?/g,
+      /(?:アンスポーツマンライクファウル|ディスクォリファイングファウル|テクニカルファウル|パーソナルファウル|チームファウル|ショットクロック|ゲームクロック|バックコート|フロントコート|スローイン|スローインライン|ジャンプボール|オルタネイティングポゼッション|フリースロー|リバウンド|バスケット|リング|バックボード|タイムアウト|バイオレーション)/g,
+      /(?:プレーヤー|交代要員|チームメンバー|ヘッドコーチ|審判|アシスタントコーチ|キャプテン)/g,
+      /(?:と(?:みなす|みなされる|する)|(?:ならない|なければならない|できない)|与えられる|宣せられる|認められる|罰せられる)/g,
+      /(?:第[一二三四五六七八九十\d]+(?:クォーター|条))/g
+    ];
+  } else if(level===4){
+    // ほぼ全部→テキスト入力に切り替え
+    return {text:'(ほぼ全文空欄)', blanks:[], mode:'textinput'};
+  } else {
+    // Lv.5: 完全白紙→テキスト入力
+    return {text:'', blanks:[], mode:'textinput_full'};
+  }
+  // マッチした部分をpushし、位置を記録
+  regexes.forEach(function(re){
+    var m;
+    var reNew=new RegExp(re.source, re.flags.replace('g','')+'g');
+    while((m=reNew.exec(body))!==null){
+      // 重複チェック
+      var overlap=mask.some(function(mk){return !(m.index+m[0].length<=mk.start||m.index>=mk.end);});
+      if(!overlap){
+        mask.push({start:m.index,end:m.index+m[0].length,answer:m[0]});
+      }
+    }
+  });
+  mask.sort(function(a,b){return a.start-b.start;});
+  // レベル1は最大3個、レベル2は最大8個、レベル3は制限なし
+  if(level===1 && mask.length>3) mask=mask.slice(0,3);
+  else if(level===2 && mask.length>8) mask=mask.slice(0,8);
+  // 空欄テキストを構築
+  var parts=[];var prev=0;
+  mask.forEach(function(mk,idx){
+    parts.push(body.substring(prev,mk.start));
+    parts.push('<span class="mem-blank" data-ans="'+_memEsc(mk.answer)+'">(____'+(idx+1)+'____)</span>');
+    blanks.push({answer:mk.answer});
+    prev=mk.end;
+  });
+  parts.push(body.substring(prev));
+  return {text:parts.join(''), blanks:blanks, mode:'cloze'};
+}
+
+function _memEsc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ---- 記録 ----
+function LMemRec(){try{return JSON.parse(localStorage.getItem(SK_MEMREC)||'{}');}catch(e){return {};}}
+function SMemRec(){try{localStorage.setItem(SK_MEMREC,JSON.stringify(memRec));}catch(e){}}
+function LMemProg(){try{return JSON.parse(localStorage.getItem(SK_MEMPROG)||'null');}catch(e){return null;}}
+function SMemProg(){
+  try{
+    var saved={mode:memMode, qids:memQueue.map(function(s){return s.id;}), idx:memIdx, level:memLevel, ses:memSes, ts:Date.now()};
+    localStorage.setItem(SK_MEMPROG,JSON.stringify(saved));
+  }catch(e){}
+}
+function ClearMemProg(){try{localStorage.removeItem(SK_MEMPROG);}catch(e){}}
+
+function _memGetRec(segId, level){
+  if(!memRec[segId]){memRec[segId]={byLevel:{}, lastLevel:1, ts:0};}
+  if(!memRec[segId].byLevel[level]){memRec[segId].byLevel[level]={c:0,w:0,srsRepeat:0,srsInterval:0,srsEase:2.5,nextReview:0};}
+  return memRec[segId];
+}
+
+// ---- クラシフィケーション ----
+function MEM_classify(segId){
+  if(!memRec[segId])return 'new';
+  var levels=[1,2,3,4,5];
+  var masteredLevels=0;
+  for(var i=0;i<levels.length;i++){
+    var lv=levels[i];
+    var d=memRec[segId].byLevel[lv];
+    if(d && d.srsInterval>=21 && d.c>=3 && (d.c/(d.c+d.w))>=0.75) masteredLevels++;
+  }
+  if(masteredLevels>=5)return 'master';   // 5段階全て定着
+  if(masteredLevels>=3)return 'advanced';
+  if(masteredLevels>=1)return 'learning';
+  return 'started';
+}
+
+// ---- クエリー構築 ----
+function MEM_buildQueue(mode){
+  var data=MEM_build().slice();
+  if(mode==='shuffle'||mode==='dialogue'){
+    data.sort(function(){return Math.random()-0.5;});
+  }
+  return data;
+}
+
+// ---- 開始 / 再開 ----
+function MEM_start(mode){
+  memMode=mode||'order';
+  // 再開可能かチェック
+  var saved=LMemProg();
+  if(saved && saved.mode===memMode && saved.qids && saved.qids.length>0 && saved.idx<saved.qids.length){
+    if(confirm('前回の続きから再開しますか？\n（キャンセルで最初から）\n進捗: '+saved.idx+'/'+saved.qids.length)){
+      MEM_resume(saved);
+      return;
+    }
+  }
+  ClearMemProg();
+  memQueue=MEM_buildQueue(memMode);
+  if(memQueue.length===0){alert('暗記対象の条文がありません');return;}
+  memIdx=0;memSes={ok:0,ng:0,mastered:0,again:0};memChosen=null;memLevel=1;
+  _histMem={};
+  SMemProg();
+  _memShowScreen();
+  MEM_render();
+}
+function MEM_resume(saved){
+  memQueue=[];
+  var byId={};
+  var allData=MEM_build();
+  for(var i=0;i<allData.length;i++)byId[allData[i].id]=allData[i];
+  for(var j=0;j<saved.qids.length;j++){if(byId[saved.qids[j]])memQueue.push(byId[saved.qids[j]]);}
+  if(memQueue.length===0){MEM_start(memMode);return;}
+  memIdx=saved.idx||0;
+  memSes=saved.ses||{ok:0,ng:0,mastered:0,again:0};
+  memLevel=saved.level||1;
+  memChosen=null;
+  _histMem={};
+  _memShowScreen();
+  MEM_render();
+}
+
+function _memShowScreen(){
+  // 他タブ非表示
+  var tabs=['quiz','list','rule','daily','memo','record'];
+  for(var i=0;i<tabs.length;i++){
+    var el=document.getElementById('T-'+tabs[i]); if(el)el.style.display='none';
+    var tn=document.getElementById('tn-'+tabs[i]); if(tn)tn.className='tnb';
+  }
+  // examタブ内で暗記画面を出す
+  var examT=document.getElementById('T-exam');
+  var examContent=document.getElementById('exam-content');
+  if(examContent)examContent.style.display='none';
+  var memWrap=document.getElementById('mem-screen');
+  if(memWrap)memWrap.style.display='';
+  if(examT)examT.style.display='';
+  var tnE=document.getElementById('tn-exam'); if(tnE)tnE.className='tnb active';
+  // タイトル
+  var tt=document.getElementById('subTitle');
+  if(tt)tt.textContent='🧠 条文暗記モード';
+  // トップに戻る
+  try{ window.scrollTo(0,0); document.documentElement.scrollTop=0; }catch(e){}
+}
+
+function MEM_exitToExam(){
+  var memWrap=document.getElementById('mem-screen'); if(memWrap)memWrap.style.display='none';
+  var examContent=document.getElementById('exam-content'); if(examContent)examContent.style.display='';
+  // 画面タイトル
+  var tt=document.getElementById('subTitle');
+  if(tt)tt.textContent='🎖️ B級昇格対策';
+}
+function MEM_pauseToHome(){
+  try{ SMemProg(); }catch(e){}
+  var memWrap=document.getElementById('mem-screen'); if(memWrap)memWrap.style.display='none';
+  var examContent=document.getElementById('exam-content'); if(examContent)examContent.style.display='';
+  try{ SHOW_TOP(); }catch(e){}
+  var tt=document.getElementById('toast');
+  if(tt){tt.textContent='⏸ 暗記モード一時停止：次回続きから再開';tt.className='toast show';setTimeout(function(){tt.className='toast';tt.textContent='💾 保存しました';},2500);}
+}
+
+// ---- レンダリング ----
+function MEM_render(){
+  var w=document.getElementById('mem-body'); if(!w)return;
+  if(memIdx>=memQueue.length){MEM_finish();return;}
+  var seg=memQueue[memIdx];
+  _memGetRec(seg.id, memLevel);
+  var d=memRec[seg.id].byLevel[memLevel];
+  var totalCnt=d.c+d.w;
+  var acc=totalCnt>0?Math.round(d.c/totalCnt*100):0;
+  var prog=memQueue.length>0?Math.round(memIdx/memQueue.length*100):0;
+
+  var h='';
+  // 進捗バー
+  h+='<div class="mem-topnav">';
+  h+='<span class="mem-nav-info">問題 '+(memIdx+1)+'/'+memQueue.length+'　'+(memMode==='dialogue'?'🎭 セリフモード':(memMode==='shuffle'?'🔀 シャッフル':'🔢 順番通り'))+'</span>';
+  h+='<span class="mem-nav-pct">'+prog+'%</span></div>';
+  h+='<div class="mem-progbar"><div class="mem-progfill" style="width:'+prog+'%"></div></div>';
+
+  // 問題カード
+  h+='<div class="card mem-card">';
+  h+='<div class="q-meta">'+_memEsc(seg.num)+'　難易度 '+seg.level+'</div>';
+  h+='<span class="q-ref">'+_memEsc(seg.ruleSrc)+'</span>';
+  // レベル表示 + 履歴バッジ
+  h+='<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">';
+  h+='<span class="mem-lv-badge mem-lv-'+memLevel+'">Lv.'+memLevel+'</span>';
+  if(totalCnt>0){
+    h+='<span class="chip">このLvの累計'+totalCnt+'回</span>';
+    h+='<span class="chip chip-ok">覚えてた'+d.c+'</span>';
+    h+='<span class="chip chip-ng">忘れてた'+d.w+'</span>';
+    h+='<span class="chip">'+acc+'%</span>';
+  } else {
+    h+='<span class="chip">このLvは初挑戦</span>';
+  }
+  if(d.srsInterval>0){
+    h+='<span class="chip" style="background:#f4f0ff;color:#6941c6">📅 次回 '+Math.round(d.srsInterval)+'日後</span>';
+  }
+  h+='</div>';
+
+  // 本文（モード別）
+  if(memMode==='dialogue'){
+    h+=_memRenderDialogue(seg);
+  } else {
+    h+=_memRenderCloze(seg);
+  }
+
+  // 操作ボタン
+  h+='<div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap">';
+  h+='<button onclick="MEM_prev()" id="mem-prev-btn-q" style="padding:5px 11px;border-radius:8px;border:1.5px solid #94a3b8;background:#f1f5f9;color:#334155;font-size:11px;font-weight:700;cursor:pointer'+(memIdx<=0?';display:none':'')+'">⏮ 前へ戻る</button>';
+  h+='<button onclick="MEM_showAnswer()" id="mem-show-ans" style="padding:5px 11px;border-radius:8px;border:1.5px solid #0b7285;background:#e3fafc;color:#0b7285;font-size:11px;font-weight:700;cursor:pointer">👁 答えを見る</button>';
+  h+='<button onclick="MEM_pauseToHome()" style="padding:8px 14px;border-radius:10px;border:2px solid #c8102e;background:linear-gradient(135deg,#c8102e,#8b0000);color:#fff;font-size:12px;font-weight:800;cursor:pointer;margin-left:auto;box-shadow:0 2px 8px rgba(200,16,46,.35);letter-spacing:0.5px">⏸ 停止</button>';
+  h+='</div>';
+  h+='</div>'; // card
+
+  // 答えエリア（初期は非表示）
+  h+='<div id="mem-answer" style="display:none;margin-top:10px"></div>';
+
+  // 自己採点ボタン（初期は非表示）
+  h+='<div id="mem-rate" style="display:none;margin-top:10px">';
+  h+='<div style="text-align:center;font-size:12px;color:#64748b;margin-bottom:6px;font-weight:700">正直に自己採点してください 👇</div>';
+  h+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">';
+  h+='<button class="mem-rate-btn mem-rate-master" onclick="MEM_rate(\'master\')">✅ 覚えてた<div style="font-size:9px;font-weight:600;margin-top:2px">Lv.↑</div></button>';
+  h+='<button class="mem-rate-btn mem-rate-ok" onclick="MEM_rate(\'ok\')">😅 あやしい<div style="font-size:9px;font-weight:600;margin-top:2px">同Lv維持</div></button>';
+  h+='<button class="mem-rate-btn mem-rate-ng" onclick="MEM_rate(\'ng\')">❌ 忘れてた<div style="font-size:9px;font-weight:600;margin-top:2px">Lv.1に戻る</div></button>';
+  h+='</div></div>';
+
+  // 次へボタン（採点後に表示）
+  h+='<div id="mem-next-area" style="display:none;margin-top:10px">';
+  h+='<div style="display:flex;gap:8px;flex-wrap:wrap">';
+  h+='<button onclick="MEM_prev()" style="flex:0 0 auto;padding:10px 14px;background:#64748b;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer'+(memIdx<=0?';display:none':'')+'">⏮ 前へ戻る</button>';
+  h+='<button class="next-btn" style="flex:1;min-width:150px" onclick="MEM_next()">次の条文へ →</button>';
+  h+='</div></div>';
+
+  w.innerHTML=h;
+  memChosen=null;
+  try{ window.scrollTo(0,0); document.documentElement.scrollTop=0; }catch(e){}
+}
+
+function _memRenderCloze(seg){
+  var cz=MEM_makeCloze(seg.fullText, memLevel);
+  var h='<div class="mem-cloze">';
+  h+='<div class="mem-cloze-lbl">以下の空欄を思い出して、答え合わせしてください：</div>';
+  if(cz.mode==='textinput'){
+    // Lv.4: 要点だけ残して書き起こし
+    var hint=seg.fullText.substring(0,20)+'...';
+    h+='<div class="mem-hint">💡 冒頭ヒント：「'+_memEsc(hint)+'」</div>';
+    h+='<textarea id="mem-input" class="mem-input" placeholder="覚えている範囲で条文を書き起こしてください..." rows="6"></textarea>';
+    h+='<div style="margin-top:8px;text-align:center"><button class="next-btn" onclick="MEM_checkInput()" style="max-width:200px">答え合わせ</button></div>';
+  } else if(cz.mode==='textinput_full'){
+    // Lv.5: 完全白紙
+    h+='<div class="mem-hint">💡 条番号のみ：<strong>'+_memEsc(seg.ruleSrc)+'</strong></div>';
+    h+='<textarea id="mem-input" class="mem-input" placeholder="条文を一字一句書き起こしてください..." rows="8"></textarea>';
+    h+='<div style="margin-top:8px;text-align:center"><button class="next-btn" onclick="MEM_checkInput()" style="max-width:200px">答え合わせ</button></div>';
+  } else {
+    h+='<div class="mem-cloze-text">'+cz.text.replace(/\n/g,'<br>')+'</div>';
+  }
+  h+='</div>';
+  return h;
+}
+
+function _memRenderDialogue(seg){
+  // セリフモード：シナリオを元に説明セリフ形式で出題
+  var scenario=seg.scenarioQ||'該当の場面';
+  var h='<div class="mem-dialogue">';
+  h+='<div class="mem-dialog-balloon mem-dialog-player">';
+  h+='<div class="mem-dialog-who">🧢 プレーヤー / コーチ</div>';
+  h+='<div class="mem-dialog-what">「'+_memEsc(scenario)+'」<br>…これは何がおかしいんですか？根拠を教えてください！</div>';
+  h+='</div>';
+  h+='<div class="mem-dialog-balloon mem-dialog-ref">';
+  h+='<div class="mem-dialog-who">🧑‍⚖️ あなた（審判）</div>';
+  h+='<div class="mem-dialog-what">「競技規則の<strong>'+_memEsc(seg.ruleSrc)+'</strong>に、こう書かれています：」</div>';
+  h+='<div class="mem-dialog-cite">「<span id="mem-dialog-cite-text" style="color:#94a3b8">（ここに条文を思い出してください…タップで表示）</span>」</div>';
+  h+='</div>';
+  h+='<div style="text-align:center;margin-top:10px"><button onclick="MEM_revealDialogue()" id="mem-dlg-reveal" style="padding:9px 18px;border-radius:10px;border:1.5px solid #0b7285;background:#e3fafc;color:#0b7285;font-size:12px;font-weight:700;cursor:pointer">🔍 条文を表示する</button></div>';
+  h+='</div>';
+  return h;
+}
+function MEM_revealDialogue(){
+  var seg=memQueue[memIdx];
+  var el=document.getElementById('mem-dialog-cite-text');
+  if(el){el.textContent=seg.fullText;el.style.color='#1d2939';}
+  var btn=document.getElementById('mem-dlg-reveal'); if(btn)btn.style.display='none';
+  // 自己採点を表示
+  var r=document.getElementById('mem-rate'); if(r)r.style.display='block';
+}
+
+// 答えを見るボタン（通常モード）
+function MEM_showAnswer(){
+  var seg=memQueue[memIdx];
+  var el=document.getElementById('mem-answer');
+  if(!el)return;
+  el.innerHTML='<div class="mem-full-answer"><div class="mem-full-lbl">📖 原文（正解）</div><div class="mem-full-text">'+_memEsc(seg.fullText).replace(/\n/g,'<br>')+'</div></div>';
+  el.style.display='block';
+  var r=document.getElementById('mem-rate'); if(r)r.style.display='block';
+  var showBtn=document.getElementById('mem-show-ans'); if(showBtn)showBtn.style.display='none';
+}
+
+// Lv.4-5のテキスト入力チェック
+function MEM_checkInput(){
+  var seg=memQueue[memIdx];
+  var input=document.getElementById('mem-input');
+  if(!input)return;
+  var userText=input.value.trim();
+  var correct=seg.fullText.replace(/\n/g,'').trim();
+  // 一致率計算（簡易版：共通文字数 / 全文字数）
+  var matchRate=_memSimilar(userText, correct);
+  var el=document.getElementById('mem-answer');
+  if(!el)return;
+  var color=matchRate>=80?'#059669':matchRate>=60?'#f59e0b':'#dc2626';
+  el.innerHTML='<div class="mem-full-answer"><div class="mem-full-lbl">📖 原文（正解）</div><div class="mem-full-text">'+_memEsc(seg.fullText).replace(/\n/g,'<br>')+'</div>'
+    +'<div style="margin-top:10px;padding:10px;background:#fff;border-radius:8px;border:1.5px solid '+color+'"><div style="font-size:11px;color:#64748b;margin-bottom:4px">✏️ あなたの回答</div><div style="font-size:13px">'+_memEsc(userText||'（未入力）')+'</div></div>'
+    +'<div style="margin-top:8px;text-align:center;font-weight:700;color:'+color+'">一致度: '+matchRate+'%</div>'
+    +'</div>';
+  el.style.display='block';
+  input.disabled=true;
+  var r=document.getElementById('mem-rate'); if(r)r.style.display='block';
+}
+function _memSimilar(a,b){
+  if(!a||!b)return 0;
+  // 空白と句読点を除去
+  var ca=a.replace(/[\s、。「」『』（）()・\n\r\t]/g,'');
+  var cb=b.replace(/[\s、。「」『』（）()・\n\r\t]/g,'');
+  if(!ca||!cb)return 0;
+  // 共通部分文字列ベース（簡易ダイス係数）
+  var la=ca.length, lb=cb.length;
+  var matched=0;
+  var bChars=cb.split('');
+  var used={};
+  for(var i=0;i<la;i++){
+    var c=ca.charAt(i);
+    for(var j=0;j<bChars.length;j++){
+      if(!used[j] && bChars[j]===c){ matched++; used[j]=true; break; }
+    }
+  }
+  return Math.round(matched*2/(la+lb)*100);
+}
+
+// 自己採点
+function MEM_rate(rating){
+  if(memChosen)return;
+  memChosen=rating;
+  var seg=memQueue[memIdx];
+  _memGetRec(seg.id, memLevel);
+  var d=memRec[seg.id].byLevel[memLevel];
+  var ok=(rating==='master'||rating==='ok');
+  if(rating==='master'){
+    d.c++;
+    memSes.mastered++;
+    SRS_updateInterval(d, 4); // Easy
+  } else if(rating==='ok'){
+    d.c++;
+    memSes.ok++;
+    SRS_updateInterval(d, 3); // Good
+  } else {
+    d.w++;
+    memSes.ng++;
+    memSes.again++;
+    SRS_updateInterval(d, 0); // Again
+  }
+  memRec[seg.id].lastLevel=memLevel;
+  memRec[seg.id].ts=Date.now();
+  SMemRec();
+  // 履歴に記録（前へ戻る用）
+  _histMem[memIdx]={rating:rating, level:memLevel, ts:Date.now()};
+  // UI更新
+  var r=document.getElementById('mem-rate'); if(r)r.style.display='none';
+  var na=document.getElementById('mem-next-area'); if(na)na.style.display='block';
+  // 「次のレベル」提案
+  var hint='';
+  if(rating==='master' && memLevel<5){
+    hint='<div style="margin-top:8px;padding:10px;background:#ecfdf5;border-left:3px solid #059669;border-radius:8px;font-size:12px"><strong>🎯 覚えました！</strong> この条文の次回出題はLv.'+(memLevel+1)+'（より深く）になります。</div>';
+  } else if(rating==='ng'){
+    hint='<div style="margin-top:8px;padding:10px;background:#fef2f2;border-left:3px solid #dc2626;border-radius:8px;font-size:12px"><strong>💪 練習継続！</strong> この条文の次回はLv.1から再出題されます。繰り返し覚えましょう。</div>';
+  }
+  var ans=document.getElementById('mem-answer');
+  if(ans && hint){ans.innerHTML+=hint;}
+}
+
+// 次 / 前
+function MEM_next(){
+  memIdx++;
+  // 同じ条文で次回のレベルを決める（インスタンス変数ではなくmemRecを使うため、ここは単純にmemIdx++でOK）
+  memLevel=1; // 次の問題は新しい条文なのでレベル1で開始（進捗はmemRec側で管理）
+  SMemProg();
+  if(memIdx>=memQueue.length){MEM_finish();return;}
+  // 次の問題：その条文で最後にクリアしたレベル+1 or 1
+  var seg=memQueue[memIdx];
+  if(memRec[seg.id]){
+    // 最後に挑戦したレベルを引き継ぐ（最初に挑戦するレベル）
+    var lastLv=memRec[seg.id].lastLevel||1;
+    var dLast=memRec[seg.id].byLevel[lastLv];
+    // 前回clear(master)したならLv+1、ngならLv.1、okなら同Lv
+    if(dLast && dLast.srsRepeat>=1 && (dLast.c/(dLast.c+Math.max(1,dLast.w)))>=0.75){
+      memLevel=Math.min(5, lastLv+1);
+    } else {
+      memLevel=lastLv;
+    }
+  } else {
+    memLevel=1;
+  }
+  MEM_render();
+}
+function MEM_prev(){
+  if(memIdx<=0){alert('最初の問題です');return;}
+  memIdx--;
+  SMemProg();
+  // 前の問題のレベルは履歴から復元
+  if(_histMem[memIdx]){ memLevel=_histMem[memIdx].level; }
+  MEM_render();
+}
+
+// 完了
+function MEM_finish(){
+  ClearMemProg();
+  var w=document.getElementById('mem-body'); if(!w)return;
+  var total=memSes.ok+memSes.ng+memSes.mastered;
+  var pct=total>0?Math.round((memSes.ok+memSes.mastered)/total*100):0;
+  var h='<div class="card" style="text-align:center;padding:30px 20px">';
+  h+='<div style="font-size:48px;margin-bottom:10px">🎉</div>';
+  h+='<div style="font-size:20px;font-weight:800;color:#164e63;margin-bottom:14px">暗記セッション終了！</div>';
+  h+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:16px 0">';
+  h+='<div style="padding:12px;background:#ecfdf5;border-radius:10px"><div style="font-size:22px;font-weight:800;color:#059669">'+memSes.mastered+'</div><div style="font-size:11px;color:#065f46">✅ 覚えてた</div></div>';
+  h+='<div style="padding:12px;background:#fef3c7;border-radius:10px"><div style="font-size:22px;font-weight:800;color:#d97706">'+memSes.ok+'</div><div style="font-size:11px;color:#78350f">😅 あやしい</div></div>';
+  h+='<div style="padding:12px;background:#fef2f2;border-radius:10px"><div style="font-size:22px;font-weight:800;color:#dc2626">'+memSes.ng+'</div><div style="font-size:11px;color:#7f1d1d">❌ 忘れてた</div></div>';
+  h+='</div>';
+  h+='<div style="padding:12px;background:linear-gradient(135deg,#f0fdfa,#ecfeff);border-radius:10px;margin-bottom:14px"><div style="font-size:11px;color:#64748b">定着率</div><div style="font-size:28px;font-weight:800;color:#0b7285">'+pct+'%</div></div>';
+  h+='<button class="next-btn" onclick="MEM_exitToExam()" style="max-width:300px">昇格対策タブに戻る</button>';
+  h+='</div>';
+  w.innerHTML=h;
+  // マスター記録に反映
+  try{
+    var modeLabel=memMode==='dialogue'?'条文暗記(セリフ)':(memMode==='shuffle'?'条文暗記(シャッフル)':'条文暗記(順番)');
+    RECORD_SESSION(modeLabel, total, memSes.mastered+memSes.ok, memQueue.map(function(s){return s.id;}));
+  }catch(e){}
+}
+
+// ========== 暗記モード：昇格タブ内 ランチャー表示 ==========
+function MEM_renderLauncher(){
+  var data=MEM_build();
+  var totalSegs=data.length;
+  var started=0,mastered=0,advanced=0,learning=0,touched=0,totalAns=0,totalOk=0;
+  for(var i=0;i<data.length;i++){
+    var cl=MEM_classify(data[i].id);
+    if(memRec[data[i].id]){touched++;
+      // 全レベルの累計
+      Object.keys(memRec[data[i].id].byLevel).forEach(function(lv){
+        var d=memRec[data[i].id].byLevel[lv];
+        totalAns+=(d.c+d.w);totalOk+=d.c;
+      });
+    }
+    if(cl==='master')mastered++;
+    else if(cl==='advanced')advanced++;
+    else if(cl==='learning')learning++;
+    else if(cl==='started')started++;
+  }
+  var ansRate=totalAns>0?Math.round(totalOk/totalAns*100):0;
+  var h='<div class="ex-rqsec" style="background:linear-gradient(135deg,#f0fdfa,#ecfeff);border:1.5px solid #a5f3fc">';
+  h+='<div class="ex-rqhead">';
+  h+='<div class="ex-rqttl" style="color:#164e63">🧠 条文暗記モード</div>';
+  h+='<div class="ex-rqsub" style="color:#0e7490">ルールブック原文を5段階（Lv.1〜Lv.5）で定着させる。「〇〇条にこう書いてある」が審判の最強の武器</div>';
+  h+='</div>';
+  // サマリー
+  h+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:10px 0;padding:10px;background:rgba(255,255,255,.7);border-radius:10px">';
+  h+='<div style="text-align:center"><div style="font-size:10px;color:#64748b">着手済</div><div style="font-size:18px;font-weight:800;color:#164e63">'+touched+'<span style="font-size:10px;color:#94a3b8;font-weight:600">/'+totalSegs+'</span></div></div>';
+  h+='<div style="text-align:center;border-left:1px solid #cffafe;border-right:1px solid #cffafe"><div style="font-size:10px;color:#64748b">累計回答</div><div style="font-size:18px;font-weight:800;color:#164e63">'+totalAns+'</div></div>';
+  h+='<div style="text-align:center"><div style="font-size:10px;color:#64748b">定着率</div><div style="font-size:18px;font-weight:800;color:'+(ansRate>=70?'#059669':ansRate>=50?'#f59e0b':ansRate>0?'#dc2626':'#94a3b8')+'">'+ansRate+'%</div></div>';
+  h+='</div>';
+  // 内訳
+  h+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:10px;font-size:10px">';
+  h+='<div style="text-align:center;padding:6px 2px;background:#ecfdf5;border-radius:6px"><div style="font-size:15px;font-weight:800;color:#059669">'+mastered+'</div><div style="color:#065f46">完全定着</div></div>';
+  h+='<div style="text-align:center;padding:6px 2px;background:#eff6ff;border-radius:6px"><div style="font-size:15px;font-weight:800;color:#2563eb">'+advanced+'</div><div style="color:#1e3a8a">上級</div></div>';
+  h+='<div style="text-align:center;padding:6px 2px;background:#fef3c7;border-radius:6px"><div style="font-size:15px;font-weight:800;color:#d97706">'+learning+'</div><div style="color:#78350f">学習中</div></div>';
+  h+='<div style="text-align:center;padding:6px 2px;background:#f3f4f6;border-radius:6px"><div style="font-size:15px;font-weight:800;color:#6b7280">'+(started+(totalSegs-touched))+'</div><div style="color:#374151">初期/未着手</div></div>';
+  h+='</div>';
+  // 開始ボタン
+  h+='<button class="ex-rqcard" onclick="MEM_start(\'order\')" style="margin-bottom:6px">';
+  h+='<div class="ex-rqicon">🔢</div>';
+  h+='<div class="ex-rqbody"><div class="ex-rqlabel">順番通り（第1条→第50条）</div><div class="ex-rqdesc">体系的に端から暗記する学習向け</div></div>';
+  h+='<div class="ex-rqcnt"><div class="ex-rqnum">'+totalSegs+'</div><div class="ex-rqunit">条</div></div>';
+  h+='<div class="ex-rqarrow">▶</div></button>';
+  h+='<button class="ex-rqcard" onclick="MEM_start(\'shuffle\')" style="margin-bottom:6px">';
+  h+='<div class="ex-rqicon">🔀</div>';
+  h+='<div class="ex-rqbody"><div class="ex-rqlabel">シャッフル</div><div class="ex-rqdesc">ランダム出題で記憶を揺さぶる</div></div>';
+  h+='<div class="ex-rqcnt"><div class="ex-rqnum">'+totalSegs+'</div><div class="ex-rqunit">条</div></div>';
+  h+='<div class="ex-rqarrow">▶</div></button>';
+  h+='<button class="ex-rqcard ex-rqcard-main" onclick="MEM_start(\'dialogue\')" style="margin-bottom:6px">';
+  h+='<div class="ex-rqicon">🎭</div>';
+  h+='<div class="ex-rqbody"><div class="ex-rqlabel">セリフモード</div><div class="ex-rqdesc">「競技規則〇〇条には、こう書いてあります」を実戦形式で練習</div></div>';
+  h+='<div class="ex-rqcnt"><div class="ex-rqnum">'+totalSegs+'</div><div class="ex-rqunit">条</div></div>';
+  h+='<div class="ex-rqarrow">▶</div></button>';
+  // Lv説明
+  h+='<div class="ex-rqhint">💡 Lv.1：キーワード空欄（自己採点）／ Lv.2-3：句単位空欄 ／ Lv.4：ほぼ全文入力 ／ Lv.5：完全白紙暗唱　— 条文ごとに自動で難易度が上がります</div>';
+  h+='</div>';
+  return h;
+}
+
 // デイリーの一時停止 → ホームに戻る
 function DC_pauseToHome(){
   // 進行状況を保存（SDCProgressは既にDC_choose→DC_nextで走る）
@@ -4848,6 +5461,7 @@ function EXAM_render(){
   practiceBody+=EXAM_renderMockLauncher();
   practiceBody+=EXAM_renderWrongMode();
   practiceBody+=EXAM_renderRuleQuiz();
+  practiceBody+=MEM_renderLauncher();
   html+='<a id="ex-g-practice"></a>'+_exGroupShell('practice','🎯 実践メニュー','🎯',practiceBody,'模試・苦手・条文テスト');
   // ========== 4. 進捗・分析（デフォルト折りたたみ）==========
   var analyticsBody='';
@@ -13030,6 +13644,7 @@ MEMO_jump=function(type,ref_id){return _origMemoJump(type,ref_id);};
 // ====== 起動 ======
 rec=LRec();rchk=LChk();daily=LDaily();memos=LMemo();EXAM_load();bookmarks=LBook();
 miniHistory=LMini();sessions=LSess();studyGoal=LGoal();SETTINGS_load();
+memRec=LMemRec();
 var now=new Date();calYear=now.getFullYear();calMonth=now.getMonth()+1;
 // 途中再開チェック：order/shuffle/miniそれぞれ確認
 var _qp_o=LQP('order'), _qp_s=LQP('shuffle'), _qp_m=LQP('mini');
@@ -13293,6 +13908,7 @@ function autoResizeAll(){var tas=document.querySelectorAll('.rf-textarea,.memo-t
 // ====== 起動 ======
 rec=LRec();rchk=LChk();daily=LDaily();memos=LMemo();EXAM_load();
 miniHistory=LMini();sessions=LSess();studyGoal=LGoal();SETTINGS_load();
+memRec=LMemRec();
 var now=new Date();calYear=now.getFullYear();calMonth=now.getMonth()+1;
 // 途中再開チェック：order/shuffle/miniそれぞれ確認
 var _qp_o=LQP('order'), _qp_s=LQP('shuffle'), _qp_m=LQP('mini');

@@ -1,6 +1,6 @@
 // Service Worker - JBA競技規則2026学習アプリ
 // キャッシュバージョン：更新のたびにこの番号を上げる
-const CACHE_VERSION = 'jba-2026-v17';
+const CACHE_VERSION = 'jba-2026-v18';
 const CACHE_FILES = ['./', './index.html'];
 
 // インストール：最低限のファイルをキャッシュ
